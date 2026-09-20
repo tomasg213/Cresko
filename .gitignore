@@ -13,3 +13,5 @@ __pycache__/
 supabase/.temp/
 apps/web/public/sw.js
 *.tsbuildinfo
+.vercel
+.env*
