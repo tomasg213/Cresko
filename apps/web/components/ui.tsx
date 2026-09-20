@@ -30,7 +30,7 @@ export function Input({ className, ...props }: ComponentPropsWithRef<"input">) {
   return (
     <input
       className={cn(
-        "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
+        "min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
         className,
       )}
       {...props}
@@ -42,7 +42,7 @@ export function Select({ className, ...props }: ComponentPropsWithRef<"select">)
   return (
     <select
       className={cn(
-        "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-primary dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
+        "min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-primary dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
         className,
       )}
       {...props}
@@ -74,7 +74,7 @@ export function CardHeader({ title, action }: { title: string; action?: ReactNod
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">{label}</span>
       {children}
     </label>
@@ -132,7 +132,7 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:py-8">
-      <div className={cn("w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-slate-800", className)}>
+      <div className={cn("w-full max-w-lg min-w-0 rounded-xl bg-white shadow-xl dark:bg-slate-800", className)}>
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
           <button
@@ -143,7 +143,7 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">{children}</div>
+        <div className="max-h-[60vh] min-w-0 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
           <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
             {footer}
