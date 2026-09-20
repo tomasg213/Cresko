@@ -3,16 +3,14 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "apps", "api", "src"))
 
-from cresko_api.main import app  # noqa: E402
+from asgiref.wsgi import WsgiToAsgi  # noqa: E402
+from cresko_api.main import app as cresko_app  # noqa: E402
+
+app = WsgiToAsgi(cresko_app)
 
 
-async def handler(scope, receive, send):
-    if scope["type"] == "http":
-        path = scope.get("path", "")
-        if path.startswith("/api"):
-            scope["path"] = path[len("/api"):] or "/"
-            scope["raw_path"] = scope["path"].encode("latin-1")
-        else:
-            scope["path"] = "/"
-            scope["raw_path"] = b"/"
-    await app(scope, receive, send)
+def handler(environ, start_response):
+    path = environ.get("PATH_INFO", "")
+    if path.startswith("/api"):
+        environ["PATH_INFO"] = path[len("/api"):] or "/"
+    return app(environ, start_response)
