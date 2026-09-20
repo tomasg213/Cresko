@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-prod/
 dist/
 coverage/
 .env
@@ -7,6 +8,8 @@ coverage/
 .venv/
 __pycache__/
 *.pyc
+*.tsbuildinfo
 .supabase/
 supabase/.temp/
+apps/web/public/sw.js
 *.tsbuildinfo

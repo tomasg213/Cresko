@@ -1,4 +1,5 @@
 import { ComponentPropsWithRef, ReactNode } from "react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -112,6 +113,43 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{children}</tbody>
       </table>
+    </div>
+  );
+}
+
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  className,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:py-8">
+      <div className={cn("w-full max-w-lg rounded-xl bg-white shadow-xl dark:bg-slate-800", className)}>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
+            {footer}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

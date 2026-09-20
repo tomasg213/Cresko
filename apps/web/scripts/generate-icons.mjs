@@ -16,3 +16,7 @@ await sharp(svg)
   .png()
   .toFile(path.join(publicDir, "apple-touch-icon.png"));
 console.log("generated apple-touch-icon.png");
+
+const maskable = path.join(publicDir, "icon-maskable.svg");
+await sharp(maskable).resize(512, 512).png().toFile(path.join(publicDir, "icon-maskable-512.png"));
+console.log("generated icon-maskable-512.png");

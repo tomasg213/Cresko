@@ -232,10 +232,12 @@ export default function PosPage() {
 
   const subtotalUsd = cart.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
   const subtotal = exchangeRate ? subtotalUsd * exchangeRate : 0;
-  const tax = cart.reduce((sum, line) => {
+  const taxUsd = cart.reduce((sum, line) => {
     if (!line.taxable) return sum;
-    return sum + line.unitPrice * line.qty * (exchangeRate ?? 0) * 0.16;
+    return sum + line.unitPrice * line.qty * 0.16;
   }, 0);
+  const totalUsd = subtotalUsd + taxUsd;
+  const tax = taxUsd * (exchangeRate ?? 0);
   const total = subtotal + tax;
 
   async function handleCheckout() {
@@ -261,7 +263,7 @@ export default function PosPage() {
           tax_rate: 16,
           lines: cart.map((line) => ({ variant_id: line.variant.id, qty: line.qty })),
           payment_method: paymentMethod,
-          paid_amount: paymentMethod === "credit" ? (paid ? Number(paid) : 0) : total,
+          paid_amount: paymentMethod === "credit" ? (paid ? Number(paid) : 0) : totalUsd,
           party_id: selectedCustomerId || undefined,
         },
       });
@@ -541,7 +543,7 @@ export default function PosPage() {
                 step="0.01"
                 value={paid}
                 onChange={(event) => setPaid(event.target.value)}
-                placeholder="Abono inicial (Bs., opcional)"
+                placeholder="Abono inicial (USD, opcional)"
                 className="mt-3 w-full"
               />
             ) : (

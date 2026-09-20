@@ -8,6 +8,7 @@ const withSerwist = withSerwistInit({
 
 const nextConfig = {
   reactStrictMode: true,
+  distDir: process.env.NODE_ENV === "development" ? ".next" : ".next-prod",
 };
 
 export default withSerwist(nextConfig);

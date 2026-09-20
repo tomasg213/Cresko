@@ -91,7 +91,6 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
   const { orgId } = useOrg();
   const [invoiceId, setInvoiceId] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"VES" | "USD">("VES");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +114,7 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
         await api("/v1/ar/payments", {
           method: "POST",
           orgId,
-          body: { invoice_id: invoiceId, amount: Number(amount), currency, method: "cash" },
+          body: { invoice_id: invoiceId, amount: Number(amount), currency: "USD", method: "cash" },
         });
       } else {
         await api("/v1/ap/payments", {
@@ -124,7 +123,7 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
           body: {
             supplier_invoice_id: invoiceId,
             amount: Number(amount),
-            currency,
+            currency: "USD",
             method: "cash",
           },
         });
@@ -150,14 +149,8 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
             ))}
           </Select>
         </Field>
-        <Field label="Monto">
+        <Field label="Monto (USD)">
           <Input type="number" step="0.01" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} required />
-        </Field>
-        <Field label="Moneda">
-          <Select value={currency} onChange={(event) => setCurrency(event.target.value as "VES" | "USD")}>
-            <option value="VES">Bs.</option>
-            <option value="USD">$</option>
-          </Select>
         </Field>
         {error && <p className="text-sm text-red-600 sm:col-span-3">{error}</p>}
         {message && <p className="text-sm text-green-600 sm:col-span-3">{message}</p>}
