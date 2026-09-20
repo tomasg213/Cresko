@@ -1,0 +1,22 @@
+[project]
+name = "cresko-api"
+version = "0.1.0"
+description = "API de dominio para Cresko ERP"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "pyjwt[crypto]>=2.10,<3",
+  "pydantic-settings>=2.10,<3",
+  "python-dotenv>=1.0,<2",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.4,<9", "ruff>=0.13,<1"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

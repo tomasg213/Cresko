@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "erp",
+  "instructions": ["AGENTS.md"],
+  "command": {
+    "module": {
+      "description": "Plan and implement a Cresko module from migration through tests.",
+      "agent": "erp",
+      "template": "Implement the requested Cresko module: $ARGUMENTS. Start by inspecting the repository and load the relevant skills. Define the migration first, then API, UI, and tests. Keep the change minimal and report verification."
+    },
+    "migration": {
+      "description": "Design a migration with RLS and tenant isolation.",
+      "agent": "schema",
+      "template": "Design the Supabase migration for: $ARGUMENTS. Include constraints, indexes, RLS policies, and tenant-isolation tests or verification notes. Do not implement API behavior."
+    },
+    "pos-check": {
+      "description": "Review POS barcode, cache, stock, and checkout invariants.",
+      "agent": "reviewer",
+      "template": "Review the current POS implementation for: barcode input, catalog cache, authorization, currency, stock concurrency, and atomic checkout. Report findings with file and line references."
+    }
+  }
+}

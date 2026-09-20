@@ -1,0 +1,7 @@
+project_id = "cresko"
+
+[db]
+major_version = 17
+
+[auth]
+enabled = true
