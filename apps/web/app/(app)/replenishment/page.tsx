@@ -131,13 +131,13 @@ function ConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" form="replenish-config-form" disabled={submitting}>
             {submitting ? "Guardando..." : "Guardar"}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} id="replenish-config-form" className="space-y-4">
         <Field label="Modelo">
           <Select
             className="w-full"
