@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Select, Table } from "@/components/ui";
@@ -13,6 +13,7 @@ export default function PartiesPage() {
   const { orgId } = useOrg();
   const [kind, setKind] = useState<"customer" | "supplier">("customer");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Party | null>(null);
 
   const parties = useQuery({
     queryKey: ["parties", orgId, kind],
@@ -20,11 +21,21 @@ export default function PartiesPage() {
     enabled: !!orgId,
   });
 
+  async function handleDelete(party: Party) {
+    if (!window.confirm(`¿Eliminar "${party.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api(`/v1/parties/${party.id}`, { method: "DELETE", orgId });
+      parties.refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "No se pudo eliminar");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Clientes y proveedores</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => { setEditing(null); setOpen(true); }}>
           <Plus className="h-4 w-4" />
           Nuevo
         </Button>
@@ -53,7 +64,7 @@ export default function PartiesPage() {
         ) : parties.data?.length === 0 ? (
           <EmptyState message="Sin registros." />
         ) : (
-          <Table headers={["Nombre", "Documento", "Teléfono", "Correo"]}>
+          <Table headers={["Nombre", "Documento", "Teléfono", "Correo", ""]}>
             {parties.data?.map((party) => (
               <tr key={party.id}>
                 <td className="px-5 py-3 font-medium">{party.name}</td>
@@ -62,6 +73,26 @@ export default function PartiesPage() {
                 </td>
                 <td className="px-5 py-3">{party.phone}</td>
                 <td className="px-5 py-3">{party.email}</td>
+                <td className="px-5 py-3">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1"
+                      onClick={() => { setEditing(party); setOpen(true); }}
+                      aria-label="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1 text-red-600"
+                      onClick={() => handleDelete(party)}
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>
@@ -71,9 +102,11 @@ export default function PartiesPage() {
       {open && (
         <PartyModal
           kind={kind}
+          party={editing}
           onClose={() => setOpen(false)}
-          onCreated={() => {
+          onSaved={() => {
             setOpen(false);
+            setEditing(null);
             parties.refetch();
           }}
         />
@@ -84,19 +117,21 @@ export default function PartiesPage() {
 
 function PartyModal({
   kind,
+  party,
   onClose,
-  onCreated,
+  onSaved,
 }: {
   kind: "customer" | "supplier";
+  party: Party | null;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
 }) {
   const { orgId } = useOrg();
-  const [name, setName] = useState("");
-  const [documentType, setDocumentType] = useState("rif");
-  const [documentId, setDocumentId] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(party?.name ?? "");
+  const [documentType, setDocumentType] = useState(party?.document_type ?? "rif");
+  const [documentId, setDocumentId] = useState(party?.document_id ?? "");
+  const [phone, setPhone] = useState(party?.phone ?? "");
+  const [email, setEmail] = useState(party?.email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -105,20 +140,21 @@ function PartyModal({
     setSubmitting(true);
     setError(null);
     try {
-      await api("/v1/parties", {
-        method: "POST",
-        orgId,
-        body: {
-          name,
-          document_type: documentType,
-          document_id: documentId || null,
-          phone: phone || null,
-          email: email || null,
-          is_customer: kind === "customer",
-          is_supplier: kind === "supplier",
-        },
-      });
-      onCreated();
+      const body = {
+        name,
+        document_type: documentType,
+        document_id: documentId || null,
+        phone: phone || null,
+        email: email || null,
+        is_customer: kind === "customer",
+        is_supplier: kind === "supplier",
+      };
+      if (party) {
+        await api(`/v1/parties/${party.id}`, { method: "PATCH", orgId, body });
+      } else {
+        await api("/v1/parties", { method: "POST", orgId, body });
+      }
+      onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
       setSubmitting(false);
@@ -130,7 +166,7 @@ function PartyModal({
       <form onSubmit={handleSubmit} className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg">
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Nuevo {kind === "customer" ? "cliente" : "proveedor"}
+            {party ? "Editar" : "Nuevo"} {kind === "customer" ? "cliente" : "proveedor"}
           </h2>
         </div>
         <div className="space-y-4 px-6 py-5">

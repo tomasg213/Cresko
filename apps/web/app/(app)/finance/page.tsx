@@ -1,12 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Select, Table } from "@/components/ui";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import type { ArReceivable, Balance, Invoice, Party } from "@/lib/types";
+import type { ApPayment, ArPayment, ArReceivable, Balance, Invoice, Party } from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
 type SupplierInvoice = { id: string; number: string; total: string; currency: string; status: string };
@@ -83,12 +83,14 @@ export default function FinancePage() {
       </Card>
 
       <PaymentForm tab={tab} />
+      <PaymentsList tab={tab} />
     </div>
   );
 }
 
 function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
   const { orgId } = useOrg();
+  const queryClient = useQueryClient();
   const [invoiceId, setInvoiceId] = useState("");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -130,6 +132,10 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
       }
       setMessage("Pago registrado.");
       setAmount("");
+      setInvoiceId("");
+      queryClient.invalidateQueries({ queryKey: ["ar-receivables", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["ap-balances", orgId] });
+      queryClient.invalidateQueries({ queryKey: [tab === "ar" ? "ar-payments" : "ap-payments", orgId] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar el pago");
     }
@@ -158,6 +164,84 @@ function PaymentForm({ tab }: { tab: "ar" | "ap" }) {
           <Button type="submit">{tab === "ar" ? "Registrar cobro" : "Registrar pago"}</Button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+function PaymentsList({ tab }: { tab: "ar" | "ap" }) {
+  const { orgId } = useOrg();
+  const queryClient = useQueryClient();
+
+  const arPayments = useQuery({
+    queryKey: ["ar-payments", orgId],
+    queryFn: () => api<ArPayment[]>(`/v1/ar/payments`, { orgId }),
+    enabled: !!orgId && tab === "ar",
+  });
+  const apPayments = useQuery({
+    queryKey: ["ap-payments", orgId],
+    queryFn: () => api<ApPayment[]>(`/v1/ap/payments`, { orgId }),
+    enabled: !!orgId && tab === "ap",
+  });
+
+  const payments = tab === "ar" ? arPayments : apPayments;
+
+  async function handleVoid(id: string) {
+    if (!window.confirm("¿Anular este pago? Se registrará una reversión en el saldo.")) return;
+    try {
+      await api(`/v1/${tab === "ar" ? "ar" : "ap"}/payments/${id}/void`, { method: "POST", orgId });
+      queryClient.invalidateQueries({ queryKey: [tab === "ar" ? "ar-payments" : "ap-payments", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["ar-receivables", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["ap-balances", orgId] });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "No se pudo anular el pago");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title={tab === "ar" ? "Cobros registrados" : "Pagos registrados"} />
+      {payments.isLoading ? (
+        <LoadingState />
+      ) : payments.isError ? (
+        <ErrorState message={payments.error.message} onRetry={() => payments.refetch()} />
+      ) : payments.data?.length === 0 ? (
+        <EmptyState message="Sin pagos registrados." />
+      ) : (
+        <Table headers={["Factura", "Contraparte", "Monto", "Moneda", "Fecha", "Estado", ""]}>
+          {payments.data?.map((payment) => {
+            const amount = Number(payment.amount);
+            const isAp = tab === "ap";
+            const shown = isAp ? -amount : amount;
+            return (
+              <tr key={payment.id}>
+                <td className="px-5 py-3 font-medium">{isAp ? (payment as ApPayment).invoice_number : (payment as ArPayment).invoice_number}</td>
+                <td className="px-5 py-3">{isAp ? (payment as ApPayment).supplier_name : (payment as ArPayment).party_name}</td>
+                <td className="px-5 py-3 font-semibold">
+                  {formatMoney(String(shown), payment.currency)}
+                </td>
+                <td className="px-5 py-3">{payment.currency}</td>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">{new Date(payment.created_at).toLocaleDateString()}</td>
+                <td className="px-5 py-3">
+                  {"status" in payment && payment.status === "void" ? (
+                    <span className="text-red-600">Anulado</span>
+                  ) : (
+                    <span className="text-green-600">Vigente</span>
+                  )}
+                </td>
+                <td className="px-5 py-3">
+                  {!("status" in payment) || payment.status === "posted" ? (
+                    <div className="flex justify-end">
+                      <Button variant="danger" className="px-3 py-1 text-xs" onClick={() => handleVoid(payment.id)}>
+                        Anular
+                      </Button>
+                    </div>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </Table>
+      )}
     </Card>
   );
 }

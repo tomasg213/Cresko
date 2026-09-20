@@ -1,10 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 
 from .dependencies import get_current_membership, get_supabase_repository, require_permissions
 from .repositories import SupabaseRepository
 from .schemas import (
+    ApPaymentOut,
+    ArPaymentOut,
     ArReceivable,
     BalanceOut,
     OrganizationContext,
@@ -69,6 +71,101 @@ async def ap_balances(
         params["party_id"] = f"eq.{party_id}"
     rows = await repository.get_json("ap_balances", params)
     return [BalanceOut.model_validate(row) for row in rows]
+
+
+@router.get("/ar/payments", response_model=list[ArPaymentOut])
+async def ar_payments(
+    context: Annotated[OrganizationContext, Depends(get_current_membership)],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+    invoice_id: str | None = None,
+) -> list[ArPaymentOut]:
+    params: dict[str, str] = {
+        "select": "id,amount,currency,method,status,created_at,invoice_id,"
+        "invoice:invoices(number,party:parties(name))",
+        "org_id": f"eq.{context.org_id}",
+        "order": "created_at.desc",
+    }
+    if invoice_id:
+        params["invoice_id"] = f"eq.{invoice_id}"
+    rows = await repository.get_json("payments", params)
+    result: list[ArPaymentOut] = []
+    for row in rows:
+        invoice = row.pop("invoice", {}) or {}
+        party = invoice.pop("party", {}) or {}
+        result.append(
+            ArPaymentOut(
+                id=row["id"],
+                invoice_id=row["invoice_id"],
+                invoice_number=invoice.get("number"),
+                party_name=party.get("name"),
+                amount=row["amount"],
+                currency=row["currency"],
+                method=row["method"],
+                status=row["status"],
+                created_at=row["created_at"],
+            )
+        )
+    return result
+
+
+@router.post("/ar/payments/{payment_id}/void", status_code=status.HTTP_204_NO_CONTENT)
+async def void_payment(
+    payment_id: str,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.FINANCE_RECEIVE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> Response:
+    await repository.rpc("cresko_void_payment", {"p_org_id": context.org_id, "p_payment_id": payment_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/ap/payments", response_model=list[ApPaymentOut])
+async def ap_payments(
+    context: Annotated[OrganizationContext, Depends(get_current_membership)],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> list[ApPaymentOut]:
+    params: dict[str, str] = {
+        "select": "id,amount,currency,created_at,supplier_invoice_id,"
+        "supplier_invoice:supplier_invoices(id,number,supplier_id,party:parties(name))",
+        "org_id": f"eq.{context.org_id}",
+        "entry_type": "eq.payment",
+        "order": "created_at.desc",
+    }
+    rows = await repository.get_json("ap_ledger", params)
+    result: list[ApPaymentOut] = []
+    for row in rows:
+        invoice = row.pop("supplier_invoice", {}) or {}
+        party = invoice.pop("party", {}) or {}
+        result.append(
+            ApPaymentOut(
+                id=row["id"],
+                supplier_invoice_id=row["supplier_invoice_id"],
+                invoice_number=invoice.get("number"),
+                supplier_name=party.get("name"),
+                amount=row["amount"],
+                currency=row["currency"],
+                created_at=row["created_at"],
+            )
+        )
+    return result
+
+
+@router.post("/ap/payments/{ledger_id}/void", status_code=status.HTTP_204_NO_CONTENT)
+async def void_ap_payment(
+    ledger_id: str,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.FINANCE_PAY)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> Response:
+    await repository.rpc(
+        "cresko_void_ap_payment",
+        {"p_org_id": context.org_id, "p_ledger_id": ledger_id},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/ar/payments", status_code=201)

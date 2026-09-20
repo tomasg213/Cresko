@@ -476,3 +476,62 @@ class ReplenishmentItem(BaseModel):
     pack_multiple: Decimal
     suggested_qty: Decimal
     preferred_supplier_id: str | None = None
+
+
+class ReplenishmentConfigOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    variant_id: str
+    warehouse_id: str
+    min_qty: Decimal
+    max_qty: Decimal
+    pack_multiple: Decimal
+    preferred_supplier_id: str | None = None
+    lead_time_days: int
+    is_active: bool
+    variant: VariantRef | None = None
+    warehouse: WarehouseRef | None = None
+
+
+class ReplenishmentConfigUpdate(BaseModel):
+    variant_id: str | None = None
+    warehouse_id: str | None = None
+    min_qty: Decimal | None = Field(default=None, ge=0)
+    max_qty: Decimal | None = Field(default=None, ge=0)
+    pack_multiple: Decimal | None = Field(default=None, gt=0)
+    preferred_supplier_id: str | None = None
+    lead_time_days: int | None = Field(default=None, ge=0)
+    is_active: bool | None = None
+
+
+class PartyUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=180)
+    document_type: Literal["rif", "ci", "passport", "other"] | None = None
+    document_id: str | None = Field(default=None, max_length=32)
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = None
+    is_customer: bool | None = None
+    is_supplier: bool | None = None
+
+
+class ArPaymentOut(BaseModel):
+    id: str
+    invoice_id: str
+    invoice_number: str | None = None
+    party_name: str | None = None
+    amount: Decimal
+    currency: str
+    method: str
+    status: str
+    created_at: str
+
+
+class ApPaymentOut(BaseModel):
+    id: str
+    supplier_invoice_id: str
+    invoice_number: str | None = None
+    supplier_name: str | None = None
+    amount: Decimal
+    currency: str
+    created_at: str

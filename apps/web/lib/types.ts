@@ -257,3 +257,39 @@ export type ReplenishmentItem = {
   suggested_qty: string;
   preferred_supplier_id: string | null;
 };
+
+export type ReplenishmentConfig = {
+  id: string;
+  variant_id: string;
+  warehouse_id: string;
+  min_qty: string;
+  max_qty: string;
+  pack_multiple: string;
+  preferred_supplier_id: string | null;
+  lead_time_days: number;
+  is_active: boolean;
+  variant: VariantRef | null;
+  warehouse: WarehouseRef | null;
+};
+
+export type ArPayment = {
+  id: string;
+  invoice_id: string;
+  invoice_number: string | null;
+  party_name: string | null;
+  amount: string;
+  currency: "VES" | "USD";
+  method: string;
+  status: string;
+  created_at: string;
+};
+
+export type ApPayment = {
+  id: string;
+  supplier_invoice_id: string;
+  invoice_number: string | null;
+  supplier_name: string | null;
+  amount: string;
+  currency: "VES" | "USD";
+  created_at: string;
+};

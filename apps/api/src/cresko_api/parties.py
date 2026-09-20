@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from .dependencies import get_current_membership, get_supabase_repository, require_permissions
 from .repositories import SupabaseRepository
-from .schemas import OrganizationContext, PartyCreate, PartyOut, Permission
+from .schemas import OrganizationContext, PartyCreate, PartyOut, PartyUpdate, Permission
 
 router = APIRouter(prefix="/v1/parties", tags=["parties"])
 
@@ -39,3 +39,28 @@ async def create_party(
     body["created_by"] = context.user_id
     rows = await repository.post_json("parties", body, prefer="return=representation")
     return PartyOut.model_validate(rows[0])
+
+
+@router.patch("/{party_id}", response_model=PartyOut)
+async def update_party(
+    party_id: str,
+    payload: PartyUpdate,
+    context: Annotated[OrganizationContext, Depends(require_permissions(Permission.CATALOG_WRITE))],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> PartyOut:
+    body = payload.model_dump(mode="json", exclude_unset=True)
+    params: dict[str, str] = {"org_id": f"eq.{context.org_id}", "id": f"eq.{party_id}"}
+    rows = await repository.patch_json("parties", body, params, prefer="return=representation")
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Party not found")
+    return PartyOut.model_validate(rows[0])
+
+
+@router.delete("/{party_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_party(
+    party_id: str,
+    context: Annotated[OrganizationContext, Depends(require_permissions(Permission.CATALOG_WRITE))],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> Response:
+    await repository.rpc("cresko_delete_party", {"p_org_id": context.org_id, "p_party_id": party_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,19 +1,20 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Modal, Select, Table } from "@/components/ui";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import type { Party, Product, ReplenishmentItem, WarehouseRef } from "@/lib/types";
+import type { Party, Product, ReplenishmentConfig, ReplenishmentItem, WarehouseRef } from "@/lib/types";
 import { formatQty } from "@/lib/utils";
 
 export default function ReplenishmentPage() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ReplenishmentConfig | null>(null);
 
   const needed = useQuery({
     queryKey: ["replenishment", orgId],
@@ -21,11 +22,24 @@ export default function ReplenishmentPage() {
     enabled: !!orgId,
   });
 
+  const configs = useQuery({
+    queryKey: ["replenishment-configs", orgId],
+    queryFn: () => api<ReplenishmentConfig[]>(`/v1/replenishment/configs`, { orgId }),
+    enabled: !!orgId,
+  });
+
+  async function handleDelete(config: ReplenishmentConfig) {
+    if (!window.confirm(`¿Eliminar la configuración de "${config.variant?.name}"?`)) return;
+    await api(`/v1/replenishment/config/${config.id}`, { method: "DELETE", orgId });
+    queryClient.invalidateQueries({ queryKey: ["replenishment-configs", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["replenishment", orgId] });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Reposición</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => { setEditing(null); setOpen(true); }}>
           <Plus className="h-4 w-4" />
           Configurar artículo
         </Button>
@@ -57,11 +71,63 @@ export default function ReplenishmentPage() {
         )}
       </Card>
 
+      <Card>
+        <CardHeader title="Configuraciones de reposición" />
+        {configs.isLoading ? (
+          <LoadingState />
+        ) : configs.isError ? (
+          <ErrorState message={configs.error.message} onRetry={() => configs.refetch()} />
+        ) : configs.data?.length === 0 ? (
+          <EmptyState message="Sin configuraciones. Agrega una para activar la reposición." />
+        ) : (
+          <Table headers={["Modelo", "SKU", "Almacén", "Mín", "Máx", "Múltiplo", "Estado", ""]}>
+            {configs.data?.map((config) => (
+              <tr key={config.id}>
+                <td className="px-5 py-3 font-medium">{config.variant?.name}</td>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">{config.variant?.sku}</td>
+                <td className="px-5 py-3">{config.warehouse?.name}</td>
+                <td className="px-5 py-3">{formatQty(config.min_qty)}</td>
+                <td className="px-5 py-3">{formatQty(config.max_qty)}</td>
+                <td className="px-5 py-3">{formatQty(config.pack_multiple)}</td>
+                <td className="px-5 py-3">
+                  <span className={config.is_active ? "text-green-600" : "text-slate-400"}>
+                    {config.is_active ? "Activa" : "Inactiva"}
+                  </span>
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1"
+                      onClick={() => { setEditing(config); setOpen(true); }}
+                      aria-label="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1 text-red-600"
+                      onClick={() => handleDelete(config)}
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
+
       {open && (
         <ConfigModal
+          config={editing}
           onClose={() => setOpen(false)}
           onSaved={() => {
             setOpen(false);
+            setEditing(null);
+            queryClient.invalidateQueries({ queryKey: ["replenishment-configs", orgId] });
             queryClient.invalidateQueries({ queryKey: ["replenishment", orgId] });
           }}
         />
@@ -70,14 +136,22 @@ export default function ReplenishmentPage() {
   );
 }
 
-function ConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function ConfigModal({
+  config,
+  onClose,
+  onSaved,
+}: {
+  config: ReplenishmentConfig | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { orgId } = useOrg();
-  const [variantId, setVariantId] = useState("");
-  const [warehouseId, setWarehouseId] = useState("");
-  const [minQty, setMinQty] = useState("");
-  const [maxQty, setMaxQty] = useState("");
-  const [packMultiple, setPackMultiple] = useState("1");
-  const [preferredSupplierId, setPreferredSupplierId] = useState("");
+  const [variantId, setVariantId] = useState(config?.variant_id ?? "");
+  const [warehouseId, setWarehouseId] = useState(config?.warehouse_id ?? "");
+  const [minQty, setMinQty] = useState(config?.min_qty ?? "");
+  const [maxQty, setMaxQty] = useState(config?.max_qty ?? "");
+  const [packMultiple, setPackMultiple] = useState(config?.pack_multiple ?? "1");
+  const [preferredSupplierId, setPreferredSupplierId] = useState(config?.preferred_supplier_id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -102,19 +176,20 @@ function ConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     setSubmitting(true);
     setError(null);
     try {
-      await api("/v1/replenishment/config", {
-        method: "PUT",
-        orgId,
-        body: {
-          variant_id: variantId,
-          warehouse_id: warehouseId,
-          min_qty: Number(minQty),
-          max_qty: Number(maxQty),
-          pack_multiple: Number(packMultiple),
-          preferred_supplier_id: preferredSupplierId || null,
-          is_active: true,
-        },
-      });
+      const body = {
+        variant_id: variantId,
+        warehouse_id: warehouseId,
+        min_qty: Number(minQty),
+        max_qty: Number(maxQty),
+        pack_multiple: Number(packMultiple),
+        preferred_supplier_id: preferredSupplierId || null,
+        is_active: true,
+      };
+      if (config) {
+        await api(`/v1/replenishment/config/${config.id}`, { method: "PATCH", orgId, body });
+      } else {
+        await api("/v1/replenishment/config", { method: "PUT", orgId, body });
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la configuración");
@@ -124,7 +199,7 @@ function ConfigModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
 
   return (
     <Modal
-      title="Configurar reposición"
+      title={config ? "Editar reposición" : "Configurar reposición"}
       onClose={onClose}
       footer={
         <>
