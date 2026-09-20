@@ -221,7 +221,7 @@ function ProductModal({
           </h2>
         </div>
         <div className="space-y-4 px-6 py-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Nombre">
               <Input required value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
@@ -273,7 +273,7 @@ function ProductModal({
 
             {variants.map((variant, vi) => (
               <div key={vi} className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="SKU">
                     <Input value={variant.sku} onChange={(event) => updateVariant(vi, { sku: event.target.value })} />
                   </Field>
@@ -287,7 +287,7 @@ function ProductModal({
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {variant.prices.map((price, pi) => (
                     <Field key={pi} label={price.price_list_code === "retail" ? "Precio detal (USD)" : "Precio mayor (USD)"}>
                       <Input

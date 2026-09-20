@@ -641,7 +641,7 @@ function NewCustomerModal({
           <Field label="Nombre">
             <Input required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Tipo de documento">
               <Select value={documentType} onChange={(event) => setDocumentType(event.target.value)}>
                 <option value="rif">RIF</option>
@@ -654,7 +654,7 @@ function NewCustomerModal({
               <Input value={documentId} onChange={(event) => setDocumentId(event.target.value)} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Teléfono">
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
             </Field>

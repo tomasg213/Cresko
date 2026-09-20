@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button, Card, Field, Input, Select } from "@/components/ui";
 import { Logo } from "@/components/logo";
@@ -16,18 +16,30 @@ export default function OnboardingPage() {
   const [branchName, setBranchName] = useState("Principal");
   const [warehouseName, setWarehouseName] = useState("Almacén principal");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.replace("/login");
+        return;
+      }
+      setLoading(false);
+    });
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user.id;
-    if (!userId) {
-      setError("Sesión no válida.");
+    const { data, error: authError } = await supabase.auth.getUser();
+    const userId = data.user?.id;
+    if (authError || !userId) {
+      setError("Tu sesión expiró. Inicia sesión de nuevo.");
       setLoading(false);
+      setTimeout(() => router.replace("/login"), 1500);
       return;
     }
 
@@ -127,7 +139,7 @@ export default function OnboardingPage() {
           <Field label="Nombre del comercio">
             <Input required value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Razón social">
               <Input value={legalName} onChange={(event) => setLegalName(event.target.value)} />
             </Field>
@@ -136,12 +148,12 @@ export default function OnboardingPage() {
             </Field>
           </div>
           <Field label="Moneda por defecto">
-            <Select value={currency} onChange={(event) => setCurrency(event.target.value)}>
+            <Select className="w-full" value={currency} onChange={(event) => setCurrency(event.target.value)}>
               <option value="VES">Bolívares (VES)</option>
               <option value="USD">Dólares (USD)</option>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Sucursal">
               <Input required value={branchName} onChange={(event) => setBranchName(event.target.value)} />
             </Field>
