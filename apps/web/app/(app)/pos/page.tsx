@@ -9,6 +9,7 @@ import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import { findVariantByBarcode, loadCatalog, saveCatalog } from "@/lib/catalogCache";
 import { PrintDialog } from "@/components/sale-document";
+import BarcodeScannerModal from "@/components/barcode-scanner";
 import type { FxRate, Invoice, Party, Product, StockLevel, Variant, WarehouseRef } from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ export default function PosPage() {
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const products = useQuery({
     queryKey: ["catalog", orgId],
@@ -156,20 +158,24 @@ export default function PosPage() {
     return matches;
   }, [normalizedQuery, products.data]);
 
-  function findExactVariant(): CatalogEntry | null {
-    if (!trimmedQuery) return null;
+  function findExactByCode(code: string): CatalogEntry | null {
+    if (!code) return null;
     const catalog = products.data ?? [];
-    const byBarcode = findVariantByBarcode(catalog, trimmedQuery);
+    const byBarcode = findVariantByBarcode(catalog, code);
     if (byBarcode) {
       const product = catalog.find((p) => p.product_variants.some((v) => v.id === byBarcode.id));
       return product ? { product, variant: byBarcode } : null;
     }
-    const q = trimmedQuery.toLowerCase();
+    const q = code.toLowerCase();
     for (const product of catalog) {
       const variant = product.product_variants.find((v) => v.sku.toLowerCase() === q);
       if (variant) return { product, variant };
     }
     return null;
+  }
+
+  function findExactVariant(): CatalogEntry | null {
+    return findExactByCode(trimmedQuery);
   }
 
   function clearQuery() {
@@ -188,6 +194,17 @@ export default function PosPage() {
     setError(null);
     addVariant(entry.variant, entry.product.is_taxable);
     clearQuery();
+    inputRef.current?.focus();
+  }
+
+function handleScannedCode(code: string) {
+    setScannerOpen(false);
+    const entry = findExactByCode(code);
+    if (entry) {
+      handleAdd(entry);
+      return;
+    }
+    setError(`No se encontró el código "${code}". Agrégalo al catálogo o revisa el código.`);
     inputRef.current?.focus();
   }
 
@@ -309,8 +326,17 @@ export default function PosPage() {
                   onKeyDown={handleKeyDown}
                   placeholder="Código de barras, SKU o nombre del producto..."
                   autoFocus
-                  className="w-full pl-9"
+                  className="w-full pl-9 pr-11"
                 />
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  aria-label="Escanear con la cámara"
+                  title="Escanear con la cámara"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700"
+                >
+                  <Camera className="h-5 w-5" />
+                </button>
               </div>
 
               {normalizedQuery && results.length > 0 && (
@@ -575,6 +601,16 @@ export default function PosPage() {
             setCustomerMode("registered");
             setSelectedCustomerId(customer.id);
             customers.refetch();
+          }}
+        />
+      )}
+
+      {scannerOpen && (
+        <BarcodeScannerModal
+          onDetected={handleScannedCode}
+          onClose={() => {
+            setScannerOpen(false);
+            inputRef.current?.focus();
           }}
         />
       )}

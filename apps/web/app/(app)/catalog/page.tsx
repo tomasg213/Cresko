@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Select, Table } from "@/components/ui";
+import BarcodeScannerModal from "@/components/barcode-scanner";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
@@ -142,6 +143,7 @@ function ProductModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [scannerVariant, setScannerVariant] = useState<number | null>(null);
 
   function updateVariant(index: number, patch: Partial<VariantRow>) {
     setVariants((current) => current.map((v, i) => (i === index ? { ...v, ...patch } : v)));
@@ -282,7 +284,22 @@ function ProductModal({
                   </Field>
                   {!editing && (
                     <Field label="Código de barras">
-                      <Input value={variant.barcode} onChange={(event) => updateVariant(vi, { barcode: event.target.value })} />
+                      <div className="relative">
+                        <Input
+                          value={variant.barcode}
+                          onChange={(event) => updateVariant(vi, { barcode: event.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setScannerVariant(vi)}
+                          aria-label="Escanear código de barras"
+                          title="Escanear con la cámara"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </button>
+                      </div>
                     </Field>
                   )}
                 </div>
@@ -325,6 +342,16 @@ function ProductModal({
           </Button>
         </div>
       </form>
+
+      {scannerVariant !== null && (
+        <BarcodeScannerModal
+          onDetected={(code) => {
+            updateVariant(scannerVariant, { barcode: code });
+            setScannerVariant(null);
+          }}
+          onClose={() => setScannerVariant(null)}
+        />
+      )}
     </div>
   );
 }
