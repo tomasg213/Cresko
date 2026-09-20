@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.next
+**/.next
+.next-prod
+**/.next-prod
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+*.pyc
+.git
