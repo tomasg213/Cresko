@@ -143,7 +143,6 @@ function Factura({ invoice, company }: { invoice: Invoice; company: Organization
 
       <Row label="Subtotal" value={formatMoney(invoice.subtotal, "VES")} />
       <Row label={`IVA (${formatQty(invoice.tax_rate)}%)`} value={formatMoney(invoice.tax, "VES")} />
-      <Row label="Tasa" value={`${formatMoney(invoice.exchange_rate, "VES")} Bs/$`} />
       <div className="mt-1 flex justify-between border-t border-dashed border-slate-800 pt-1 text-sm font-black">
         <span>TOTAL</span>
         <span>{formatMoney(invoice.total, "VES")}</span>
@@ -197,7 +196,6 @@ function NotaEntrega({ invoice, company }: { invoice: Invoice; company: Organiza
       <Divider />
 
       <Row label="Subtotal" value={formatMoney(invoice.subtotal, "VES")} />
-      <Row label="Tasa" value={`${formatMoney(invoice.exchange_rate, "VES")} Bs/$`} />
       <div className="mt-1 flex justify-between border-t border-dashed border-slate-800 pt-1 text-sm font-black">
         <span>TOTAL</span>
         <span>{formatMoney(invoice.total, "VES")}</span>
