@@ -19,7 +19,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
       setError(error.message);
       setLoading(false);
@@ -35,8 +38,12 @@ export default function LoginPage() {
           <div className="flex items-center gap-3">
             <Logo className="h-10 w-10" />
             <div>
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Cresko</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Inicia sesión en tu comercio</p>
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Cresko
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Inicia sesión en tu comercio
+              </p>
             </div>
           </div>
         </div>
@@ -64,8 +71,19 @@ export default function LoginPage() {
         </form>
         <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 text-center text-sm">
           ¿No tienes cuenta?{" "}
-          <a href="/signup" className="font-medium text-primary hover:underline">
+          <a
+            href="/signup"
+            className="font-medium text-primary hover:underline"
+          >
             Crear cuenta
+          </a>
+        </div>
+        <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-3 text-center text-sm">
+          <a
+            href="/preview"
+            className="font-medium text-primary hover:underline"
+          >
+            Probar con datos de demostración
           </a>
         </div>
       </Card>

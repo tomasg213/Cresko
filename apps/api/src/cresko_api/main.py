@@ -12,6 +12,7 @@ from .members import router as members_router
 from .orgs import router as orgs_router
 from .parties import router as parties_router
 from .pos import router as pos_router
+from .preview import router as preview_router
 from .purchasing import router as purchasing_router
 from .replenishment import router as replenishment_router
 from .roles import router as roles_router
@@ -46,6 +47,7 @@ app.include_router(members_router)
 app.include_router(orgs_router)
 app.include_router(fx_router)
 app.include_router(backup_router)
+app.include_router(preview_router)
 
 
 @app.exception_handler(httpx.HTTPStatusError)

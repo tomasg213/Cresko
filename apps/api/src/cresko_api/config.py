@@ -21,6 +21,7 @@ _load_repo_env()
 class Settings(BaseSettings):
     supabase_url: AnyHttpUrl = "http://127.0.0.1:54321"
     supabase_anon_key: str = "replace-me"
+    supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
     jwt_audience: str = "authenticated"
     jwt_issuer: str | None = None
@@ -34,6 +35,10 @@ class Settings(BaseSettings):
     @property
     def rest_url(self) -> str:
         return f"{str(self.supabase_url).rstrip('/')}/rest/v1"
+
+    @property
+    def auth_url(self) -> str:
+        return f"{str(self.supabase_url).rstrip('/')}/auth/v1"
 
 
 @lru_cache
