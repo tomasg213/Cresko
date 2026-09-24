@@ -1,9 +1,17 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { api } from "@/lib/api";
+import { FeedbackProvider } from "@/components/feedback";
 import { ThemeProvider } from "@/components/theme-provider";
 import type { CurrentUser, Organization, Permission } from "@/lib/types";
 
@@ -28,14 +36,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <OrgProvider>{children}</OrgProvider>
+        <FeedbackProvider>
+          <OrgProvider>{children}</OrgProvider>
+        </FeedbackProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
 
 function OrgProvider({ children }: { children: React.ReactNode }) {
-  const [memberships, setMemberships] = useState<CurrentUser["memberships"]>([]);
+  const [memberships, setMemberships] = useState<CurrentUser["memberships"]>(
+    [],
+  );
   const [orgId, setOrgIdState] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,9 +68,10 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
     api<CurrentUser>("/v1/me")
       .then((me) => {
         setMemberships(me.memberships);
-        const active = me.memberships.find((m) => m.org_id === stored)?.org_id
-          ?? me.memberships[0]?.org_id
-          ?? null;
+        const active =
+          me.memberships.find((m) => m.org_id === stored)?.org_id ??
+          me.memberships[0]?.org_id ??
+          null;
         setOrgIdState(active);
         if (active) window.localStorage.setItem(ORG_KEY, active);
         loadOrg(active);
@@ -81,11 +94,33 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
   const roleName = activeMembership?.role_name ?? null;
   const permissions = activeMembership?.permissions ?? [];
 
-  const can = useCallback((permission: Permission) => permissions.includes(permission), [permissions]);
+  const can = useCallback(
+    (permission: Permission) => permissions.includes(permission),
+    [permissions],
+  );
 
   const value = useMemo(
-    () => ({ memberships, orgId, orgName, roleName, permissions, loading, setOrgId, refreshOrg, can }),
-    [memberships, orgId, orgName, roleName, permissions, loading, can, refreshOrg],
+    () => ({
+      memberships,
+      orgId,
+      orgName,
+      roleName,
+      permissions,
+      loading,
+      setOrgId,
+      refreshOrg,
+      can,
+    }),
+    [
+      memberships,
+      orgId,
+      orgName,
+      roleName,
+      permissions,
+      loading,
+      can,
+      refreshOrg,
+    ],
   );
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;

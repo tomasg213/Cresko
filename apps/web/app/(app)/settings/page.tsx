@@ -4,20 +4,53 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Select, Table } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  LoadingState,
+  Select,
+  Table,
+} from "@/components/ui";
+import { useFeedback } from "@/components/feedback";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import type { FxRate, Invitation, Member, Organization, Permission, PermissionInfo, Role } from "@/lib/types";
+import { formatRif } from "@/lib/documents";
+import type {
+  FxRate,
+  Invitation,
+  Member,
+  Organization,
+  Permission,
+  PermissionInfo,
+  Role,
+} from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
 const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Catálogo", keys: ["catalog.read", "catalog.write"] },
   { label: "Inventario", keys: ["inventory.read", "inventory.write"] },
-  { label: "Ventas (POS)", keys: ["sales.read", "sales.checkout", "sales.credit"] },
-  { label: "Compras", keys: ["purchasing.read", "purchasing.write", "purchasing.receive"] },
-  { label: "Finanzas", keys: ["finance.read", "finance.receive", "finance.pay"] },
+  {
+    label: "Ventas (POS)",
+    keys: ["sales.read", "sales.checkout", "sales.credit"],
+  },
+  {
+    label: "Compras",
+    keys: ["purchasing.read", "purchasing.write", "purchasing.receive"],
+  },
+  {
+    label: "Finanzas",
+    keys: ["finance.read", "finance.receive", "finance.pay"],
+  },
   { label: "Reposición", keys: ["replenishment.read", "replenishment.write"] },
-  { label: "Administración", keys: ["members.manage", "roles.manage", "org.manage"] },
+  {
+    label: "Administración",
+    keys: ["members.manage", "roles.manage", "org.manage"],
+  },
 ];
 
 type RoleModalState = { mode: "create" } | { mode: "edit"; role: Role } | null;
@@ -42,13 +75,17 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configuración</h1>
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+        Configuración
+      </h1>
 
       <div className="flex gap-2">
         <button
           onClick={() => setTab("org")}
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === "org" ? "bg-primary text-white" : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+            tab === "org"
+              ? "bg-primary text-white"
+              : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
           }`}
         >
           Comercio
@@ -56,7 +93,9 @@ export default function SettingsPage() {
         <button
           onClick={() => setTab("roles")}
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === "roles" ? "bg-primary text-white" : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+            tab === "roles"
+              ? "bg-primary text-white"
+              : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
           }`}
         >
           Roles
@@ -64,7 +103,9 @@ export default function SettingsPage() {
         <button
           onClick={() => setTab("members")}
           className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            tab === "members" ? "bg-primary text-white" : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
+            tab === "members"
+              ? "bg-primary text-white"
+              : "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200"
           }`}
         >
           Miembros
@@ -87,18 +128,28 @@ export default function SettingsPage() {
           {roles.isLoading ? (
             <LoadingState />
           ) : roles.isError ? (
-            <ErrorState message={roles.error.message} onRetry={() => roles.refetch()} />
+            <ErrorState
+              message={roles.error.message}
+              onRetry={() => roles.refetch()}
+            />
           ) : roles.data?.length === 0 ? (
             <EmptyState message="Sin roles creados." />
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {roles.data?.map((role) => (
-                <div key={role.id} className="flex items-start justify-between px-5 py-4">
+                <div
+                  key={role.id}
+                  className="flex items-start justify-between px-5 py-4"
+                >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">{role.name}</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {role.name}
+                      </span>
                       {role.is_system && (
-                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">Sistema</span>
+                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          Sistema
+                        </span>
                       )}
                     </div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -108,15 +159,23 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="secondary" onClick={() => setRoleOpen({ mode: "edit", role })}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setRoleOpen({ mode: "edit", role })}
+                    >
                       Editar
                     </Button>
                     {!role.is_system && (
                       <Button
                         variant="danger"
                         onClick={async () => {
-                          await api(`/v1/roles/${role.id}`, { method: "DELETE", orgId });
-                          queryClient.invalidateQueries({ queryKey: ["roles", orgId] });
+                          await api(`/v1/roles/${role.id}`, {
+                            method: "DELETE",
+                            orgId,
+                          });
+                          queryClient.invalidateQueries({
+                            queryKey: ["roles", orgId],
+                          });
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -142,7 +201,10 @@ export default function SettingsPage() {
           {members.isLoading ? (
             <LoadingState />
           ) : members.isError ? (
-            <ErrorState message={members.error.message} onRetry={() => members.refetch()} />
+            <ErrorState
+              message={members.error.message}
+              onRetry={() => members.refetch()}
+            />
           ) : members.data?.length === 0 ? (
             <EmptyState message="Sin miembros." />
           ) : (
@@ -198,9 +260,14 @@ function PendingInvitations() {
 
   return (
     <div className="border-t border-slate-200 dark:border-slate-700 px-5 py-4">
-      <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Invitaciones pendientes</h3>
+      <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+        Invitaciones pendientes
+      </h3>
       {pending.data?.map((invitation) => (
-        <div key={invitation.id} className="flex items-center justify-between py-2">
+        <div
+          key={invitation.id}
+          className="flex items-center justify-between py-2"
+        >
           <span className="text-sm text-slate-600 dark:text-slate-400">
             {invitation.email} · {invitation.org_id.slice(0, 8)}
           </span>
@@ -233,7 +300,9 @@ function RoleModal({
 }) {
   const { orgId } = useOrg();
   const [name, setName] = useState(initial?.name ?? "");
-  const [selected, setSelected] = useState<Permission[]>(initial?.permissions ?? []);
+  const [selected, setSelected] = useState<Permission[]>(
+    initial?.permissions ?? [],
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -245,7 +314,9 @@ function RoleModal({
 
   function toggle(permission: Permission) {
     setSelected((current) =>
-      current.includes(permission) ? current.filter((p) => p !== permission) : [...current, permission],
+      current.includes(permission)
+        ? current.filter((p) => p !== permission)
+        : [...current, permission],
     );
   }
 
@@ -262,30 +333,47 @@ function RoleModal({
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar el rol");
+      setError(
+        err instanceof Error ? err.message : "No se pudo guardar el rol",
+      );
       setSubmitting(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <form onSubmit={handleSubmit} className="mt-8 w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-lg"
+      >
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{initial ? "Editar rol" : "Nuevo rol"}</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {initial ? "Editar rol" : "Nuevo rol"}
+          </h2>
         </div>
         <div className="space-y-4 px-6 py-5">
           <Field label="Nombre del rol">
-            <Input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej: Cajero, Bodeguero, Pedidos" />
+            <Input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Ej: Cajero, Bodeguero, Pedidos"
+            />
           </Field>
           <div className="space-y-4">
             {PERMISSION_GROUPS.map((group) => (
               <div key={group.label}>
-                <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{group.label}</h3>
+                <h3 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {group.label}
+                </h3>
                 <div className="space-y-1">
                   {group.keys.map((key) => {
                     const info = permissions.data?.find((p) => p.code === key);
                     return (
-                      <label key={key} className="flex items-start gap-2 text-sm">
+                      <label
+                        key={key}
+                        className="flex items-start gap-2 text-sm"
+                      >
                         <input
                           type="checkbox"
                           className="mt-0.5"
@@ -293,8 +381,14 @@ function RoleModal({
                           onChange={() => toggle(key)}
                         />
                         <span>
-                          <span className="font-medium text-slate-800 dark:text-slate-100">{key}</span>
-                          {info && <span className="block text-xs text-slate-500 dark:text-slate-400">{info.description}</span>}
+                          <span className="font-medium text-slate-800 dark:text-slate-100">
+                            {key}
+                          </span>
+                          {info && (
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">
+                              {info.description}
+                            </span>
+                          )}
                         </span>
                       </label>
                     );
@@ -318,7 +412,13 @@ function RoleModal({
   );
 }
 
-function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
+function InviteModal({
+  onClose,
+  onInvited,
+}: {
+  onClose: () => void;
+  onInvited: () => void;
+}) {
   const { orgId } = useOrg();
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -343,23 +443,39 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
       });
       onInvited();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo enviar la invitación");
+      setError(
+        err instanceof Error ? err.message : "No se pudo enviar la invitación",
+      );
       setSubmitting(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <form onSubmit={handleSubmit} className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg"
+      >
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Invitar miembro</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Invitar miembro
+          </h2>
         </div>
         <div className="space-y-4 px-6 py-5">
           <Field label="Correo electrónico del empleado">
-            <Input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </Field>
           <Field label="Rol">
-            <Select required value={roleId} onChange={(event) => setRoleId(event.target.value)}>
+            <Select
+              required
+              value={roleId}
+              onChange={(event) => setRoleId(event.target.value)}
+            >
               <option value="">Seleccionar...</option>
               {roles.data?.map((role) => (
                 <option key={role.id} value={role.id}>
@@ -369,7 +485,8 @@ function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (
             </Select>
           </Field>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            El empleado debe crear una cuenta con ese correo y aceptará la invitación al entrar.
+            El empleado debe crear una cuenta con ese correo y aceptará la
+            invitación al entrar.
           </p>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -431,7 +548,7 @@ function CommerceSettings() {
         body: {
           name,
           legal_name: legalName || null,
-          tax_id: taxId || null,
+          tax_id: taxId ? formatRif(taxId) : null,
           default_currency: currency,
         },
       });
@@ -448,28 +565,44 @@ function CommerceSettings() {
     <>
       <Card>
         <CardHeader title="Datos del comercio" />
-      <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5 max-w-xl">
-        <Field label="Nombre de la empresa o comercio">
-          <Input required value={name} onChange={(event) => setName(event.target.value)} />
-        </Field>
-        <Field label="Razón social">
-          <Input value={legalName} onChange={(event) => setLegalName(event.target.value)} />
-        </Field>
-        <Field label="RIF">
-          <Input value={taxId} onChange={(event) => setTaxId(event.target.value)} />
-        </Field>
-        <Field label="Moneda por defecto">
-          <Select value={currency} onChange={(event) => setCurrency(event.target.value as "VES" | "USD")}>
-            <option value="VES">Bolívares (VES)</option>
-            <option value="USD">Dólares (USD)</option>
-          </Select>
-        </Field>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {message && <p className="text-sm text-green-600">{message}</p>}
-        <Button type="submit" disabled={submitting}>
-          {submitting ? "Guardando..." : "Guardar cambios"}
-        </Button>
-      </form>
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5 max-w-xl">
+          <Field label="Nombre de la empresa o comercio">
+            <Input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </Field>
+          <Field label="Razón social">
+            <Input
+              value={legalName}
+              onChange={(event) => setLegalName(event.target.value)}
+            />
+          </Field>
+          <Field label="RIF">
+            <Input
+              value={taxId}
+              onChange={(event) => setTaxId(formatRif(event.target.value))}
+              placeholder="J-12345678-9"
+            />
+          </Field>
+          <Field label="Moneda por defecto">
+            <Select
+              value={currency}
+              onChange={(event) =>
+                setCurrency(event.target.value as "VES" | "USD")
+              }
+            >
+              <option value="VES">Bolívares (VES)</option>
+              <option value="USD">Dólares (USD)</option>
+            </Select>
+          </Field>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {message && <p className="text-sm text-green-600">{message}</p>}
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </form>
       </Card>
       <FxRateCard />
       <BackupCard />
@@ -498,12 +631,18 @@ function FxRateCard() {
     setError(null);
     setMessage(null);
     try {
-      await api(`/v1/fx/rate`, { method: "POST", orgId, body: { rate: Number(rate) } });
+      await api(`/v1/fx/rate`, {
+        method: "POST",
+        orgId,
+        body: { rate: Number(rate) },
+      });
       setMessage("Tasa guardada.");
       setRate("");
       queryClient.invalidateQueries({ queryKey: ["fx-rate", orgId] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar la tasa");
+      setError(
+        err instanceof Error ? err.message : "No se pudo guardar la tasa",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -518,7 +657,11 @@ function FxRateCard() {
       setMessage("Tasa obtenida del BCV.");
       queryClient.invalidateQueries({ queryKey: ["fx-rate", orgId] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo obtener la tasa del BCV");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo obtener la tasa del BCV",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -535,7 +678,8 @@ function FxRateCard() {
                 {formatMoney(current.data.rate, "VES")} Bs. por USD
               </span>
               <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
-                ({current.data.rate_date} · {current.data.source === "bcv" ? "BCV" : "manual"})
+                ({current.data.rate_date} ·{" "}
+                {current.data.source === "bcv" ? "BCV" : "manual"})
               </span>
             </>
           ) : (
@@ -561,7 +705,11 @@ function FxRateCard() {
           </Button>
         </form>
 
-        <Button variant="secondary" onClick={fetchFromBcv} disabled={submitting}>
+        <Button
+          variant="secondary"
+          onClick={fetchFromBcv}
+          disabled={submitting}
+        >
           Obtener tasa oficial del día (dolarapi.com)
         </Button>
 
@@ -574,6 +722,7 @@ function FxRateCard() {
 
 function BackupCard() {
   const { orgId } = useOrg();
+  const { confirm } = useFeedback();
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -584,8 +733,12 @@ function BackupCard() {
     setError(null);
     setMessage(null);
     try {
-      const data = await api<Record<string, unknown>>(`/v1/backup/export`, { orgId });
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const data = await api<Record<string, unknown>>(`/v1/backup/export`, {
+        orgId,
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -594,7 +747,9 @@ function BackupCard() {
       URL.revokeObjectURL(url);
       setMessage("Respaldo descargado. Guárdalo en un lugar seguro.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo exportar el respaldo");
+      setError(
+        err instanceof Error ? err.message : "No se pudo exportar el respaldo",
+      );
     } finally {
       setWorking(false);
     }
@@ -603,7 +758,11 @@ function BackupCard() {
   async function handleImportFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!window.confirm("Importar reemplazará TODOS los datos actuales del comercio. ¿Continuar?")) {
+    if (
+      !(await confirm(
+        "Importar reemplazará TODOS los datos actuales del comercio. ¿Continuar?",
+      ))
+    ) {
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
@@ -621,7 +780,9 @@ function BackupCard() {
       setMessage(result.message);
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo importar el respaldo");
+      setError(
+        err instanceof Error ? err.message : "No se pudo importar el respaldo",
+      );
     } finally {
       setWorking(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -633,15 +794,20 @@ function BackupCard() {
       <CardHeader title="Respaldo de datos" />
       <div className="space-y-4 px-5 py-5 max-w-xl">
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Exporta toda la información del comercio (catálogo, inventario, facturas, cuentas, roles) a
-          un archivo para resguardarla. Sirve como medida de seguridad ante un formateo, cambio de
-          servidor, base de datos o si cambias de servicio.
+          Exporta toda la información del comercio (catálogo, inventario,
+          facturas, cuentas, roles) a un archivo para resguardarla. Sirve como
+          medida de seguridad ante un formateo, cambio de servidor, base de
+          datos o si cambias de servicio.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button onClick={exportBackup} disabled={working}>
             {working ? "Procesando..." : "Exportar respaldo"}
           </Button>
-          <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={working}>
+          <Button
+            variant="secondary"
+            onClick={() => fileRef.current?.click()}
+            disabled={working}
+          >
             Importar respaldo
           </Button>
           <input

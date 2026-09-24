@@ -4,19 +4,39 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { Button, Card, CardHeader, EmptyState, ErrorState, Field, Input, LoadingState, Select, Table } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  ErrorState,
+  Field,
+  Input,
+  LoadingState,
+  Select,
+  Table,
+} from "@/components/ui";
 import BarcodeScannerModal from "@/components/barcode-scanner";
+import { useFeedback } from "@/components/feedback";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
 type PriceRow = { price_list_code: "retail" | "wholesale"; amount: string };
-type VariantRow = { variant_id?: string; sku: string; name: string; barcode: string; prices: PriceRow[] };
-type ModalState = { mode: "create" } | { mode: "edit"; product: Product } | null;
+type VariantRow = {
+  variant_id?: string;
+  sku: string;
+  name: string;
+  barcode: string;
+  prices: PriceRow[];
+};
+type ModalState =
+  { mode: "create" } | { mode: "edit"; product: Product } | null;
 
 export default function CatalogPage() {
   const { orgId } = useOrg();
+  const { confirm, notify } = useFeedback();
   const queryClient = useQueryClient();
   const [modal, setModal] = useState<ModalState>(null);
 
@@ -29,7 +49,9 @@ export default function CatalogPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Catálogo</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Catálogo
+        </h1>
         <Button onClick={() => setModal({ mode: "create" })}>
           <Plus className="h-4 w-4" />
           Nuevo artículo
@@ -41,43 +63,77 @@ export default function CatalogPage() {
         {products.isLoading ? (
           <LoadingState />
         ) : products.isError ? (
-          <ErrorState message={products.error.message} onRetry={() => products.refetch()} />
+          <ErrorState
+            message={products.error.message}
+            onRetry={() => products.refetch()}
+          />
         ) : products.data?.length === 0 ? (
           <EmptyState message="Aún no hay artículos. Crea el primero." />
         ) : (
-          <Table headers={["Artículo", "Modelos", "Precios", "Estado", "Acciones"]}>
+          <Table
+            headers={["Artículo", "Modelos", "Precios", "Estado", "Acciones"]}
+          >
             {products.data?.map((product) => (
               <tr key={product.id}>
                 <td className="px-5 py-3 font-medium">{product.name}</td>
                 <td className="px-5 py-3">{product.product_variants.length}</td>
                 <td className="px-5 py-3">
-                  {product.product_variants.flatMap((v) => v.variant_prices).slice(0, 2).map((p, i) => (
-                    <div key={i} className="text-xs text-slate-600 dark:text-slate-400">
-                      {formatMoney(p.amount, p.currency)}
-                    </div>
-                  ))}
+                  {product.product_variants
+                    .flatMap((v) => v.variant_prices)
+                    .slice(0, 2)
+                    .map((p, i) => (
+                      <div
+                        key={i}
+                        className="text-xs text-slate-600 dark:text-slate-400"
+                      >
+                        {formatMoney(p.amount, p.currency)}
+                      </div>
+                    ))}
                 </td>
                 <td className="px-5 py-3">
-                  <span className={product.is_active ? "text-green-600" : "text-slate-400"}>
+                  <span
+                    className={
+                      product.is_active ? "text-green-600" : "text-slate-400"
+                    }
+                  >
                     {product.is_active ? "Activo" : "Inactivo"}
                   </span>
                 </td>
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
-                    <Button variant="secondary" onClick={() => setModal({ mode: "edit", product })}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setModal({ mode: "edit", product })}
+                    >
                       <Pencil className="h-4 w-4" />
                       Editar
                     </Button>
                     <Button
                       variant="danger"
                       onClick={async () => {
-                        if (!window.confirm(`¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`)) return;
+                        if (
+                          !(await confirm(
+                            `¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`,
+                          ))
+                        )
+                          return;
                         try {
-                          await api(`/v1/catalog/products/${product.id}`, { method: "DELETE", orgId });
-                          queryClient.invalidateQueries({ queryKey: ["products", orgId] });
-                          queryClient.invalidateQueries({ queryKey: ["catalog", orgId] });
+                          await api(`/v1/catalog/products/${product.id}`, {
+                            method: "DELETE",
+                            orgId,
+                          });
+                          queryClient.invalidateQueries({
+                            queryKey: ["products", orgId],
+                          });
+                          queryClient.invalidateQueries({
+                            queryKey: ["catalog", orgId],
+                          });
                         } catch (err) {
-                          window.alert(err instanceof Error ? err.message : "No se pudo eliminar el artículo");
+                          notify(
+                            err instanceof Error
+                              ? err.message
+                              : "No se pudo eliminar el artículo",
+                          );
                         }
                       }}
                     >
@@ -125,9 +181,13 @@ function ProductModal({
         barcode: variant.barcodes[0]?.barcode ?? "",
         prices: (["retail", "wholesale"] as const).map((code) => {
           const price = variant.variant_prices.find(
-            (p) => p.currency === "USD" && (p.price_list?.code ?? "retail") === code,
+            (p) =>
+              p.currency === "USD" && (p.price_list?.code ?? "retail") === code,
           );
-          return { price_list_code: code, amount: price ? String(price.amount) : "" };
+          return {
+            price_list_code: code,
+            amount: price ? String(price.amount) : "",
+          };
         }),
       }))
     : [];
@@ -139,23 +199,38 @@ function ProductModal({
   const [variants, setVariants] = useState<VariantRow[]>(
     editing
       ? initialVariants
-      : [{ sku: "", name: "", barcode: "", prices: [{ price_list_code: "retail", amount: "" }] }],
+      : [
+          {
+            sku: "",
+            name: "",
+            barcode: "",
+            prices: [{ price_list_code: "retail", amount: "" }],
+          },
+        ],
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [scannerVariant, setScannerVariant] = useState<number | null>(null);
 
   function updateVariant(index: number, patch: Partial<VariantRow>) {
-    setVariants((current) => current.map((v, i) => (i === index ? { ...v, ...patch } : v)));
+    setVariants((current) =>
+      current.map((v, i) => (i === index ? { ...v, ...patch } : v)),
+    );
   }
 
-  function updatePrice(variantIndex: number, priceIndex: number, patch: Partial<PriceRow>) {
+  function updatePrice(
+    variantIndex: number,
+    priceIndex: number,
+    patch: Partial<PriceRow>,
+  ) {
     setVariants((current) =>
       current.map((v, i) =>
         i === variantIndex
           ? {
               ...v,
-              prices: v.prices.map((p, pi) => (pi === priceIndex ? { ...p, ...patch } : p)),
+              prices: v.prices.map((p, pi) =>
+                pi === priceIndex ? { ...p, ...patch } : p,
+              ),
             }
           : v,
       ),
@@ -169,7 +244,10 @@ function ProductModal({
     const pricesPayload = (v: VariantRow) =>
       v.prices
         .filter((p) => p.amount !== "")
-        .map((p) => ({ price_list_code: p.price_list_code, amount: Number(p.amount) }));
+        .map((p) => ({
+          price_list_code: p.price_list_code,
+          amount: Number(p.amount),
+        }));
 
     try {
       if (editing) {
@@ -209,14 +287,19 @@ function ProductModal({
       }
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar el artículo");
+      setError(
+        err instanceof Error ? err.message : "No se pudo guardar el artículo",
+      );
       setSubmitting(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <form onSubmit={handleSubmit} className="mt-8 w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-lg"
+      >
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {editing ? "Editar artículo" : "Nuevo artículo"}
@@ -225,10 +308,17 @@ function ProductModal({
         <div className="space-y-4 px-6 py-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Nombre">
-              <Input required value={name} onChange={(event) => setName(event.target.value)} />
+              <Input
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
             </Field>
             <Field label="Unidad base">
-              <Select value={baseUnit} onChange={(event) => setBaseUnit(event.target.value)}>
+              <Select
+                value={baseUnit}
+                onChange={(event) => setBaseUnit(event.target.value)}
+              >
                 <option value="unit">Unidad</option>
                 <option value="kg">Kilogramo</option>
                 <option value="g">Gramo</option>
@@ -240,7 +330,10 @@ function ProductModal({
               </Select>
             </Field>
             <Field label="Descripción">
-              <Input value={description} onChange={(event) => setDescription(event.target.value)} />
+              <Input
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
             </Field>
           </div>
 
@@ -256,7 +349,9 @@ function ProductModal({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Modelos</h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Modelos
+              </h3>
               {!editing && (
                 <Button
                   type="button"
@@ -264,7 +359,12 @@ function ProductModal({
                   onClick={() =>
                     setVariants((current) => [
                       ...current,
-                      { sku: "", name: "", barcode: "", prices: [{ price_list_code: "retail", amount: "" }] },
+                      {
+                        sku: "",
+                        name: "",
+                        barcode: "",
+                        prices: [{ price_list_code: "retail", amount: "" }],
+                      },
                     ])
                   }
                 >
@@ -274,20 +374,35 @@ function ProductModal({
             </div>
 
             {variants.map((variant, vi) => (
-              <div key={vi} className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+              <div
+                key={vi}
+                className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-700 p-4"
+              >
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="SKU">
-                    <Input value={variant.sku} onChange={(event) => updateVariant(vi, { sku: event.target.value })} />
+                    <Input
+                      value={variant.sku}
+                      onChange={(event) =>
+                        updateVariant(vi, { sku: event.target.value })
+                      }
+                    />
                   </Field>
                   <Field label="Nombre del modelo (ej. Azul / M)">
-                    <Input value={variant.name} onChange={(event) => updateVariant(vi, { name: event.target.value })} />
+                    <Input
+                      value={variant.name}
+                      onChange={(event) =>
+                        updateVariant(vi, { name: event.target.value })
+                      }
+                    />
                   </Field>
                   {!editing && (
                     <Field label="Código de barras">
                       <div className="relative">
                         <Input
                           value={variant.barcode}
-                          onChange={(event) => updateVariant(vi, { barcode: event.target.value })}
+                          onChange={(event) =>
+                            updateVariant(vi, { barcode: event.target.value })
+                          }
                           className="pr-10"
                         />
                         <button
@@ -306,13 +421,22 @@ function ProductModal({
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {variant.prices.map((price, pi) => (
-                    <Field key={pi} label={price.price_list_code === "retail" ? "Precio detal (USD)" : "Precio mayor (USD)"}>
+                    <Field
+                      key={pi}
+                      label={
+                        price.price_list_code === "retail"
+                          ? "Precio detal (USD)"
+                          : "Precio mayor (USD)"
+                      }
+                    >
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
                         value={price.amount}
-                        onChange={(event) => updatePrice(vi, pi, { amount: event.target.value })}
+                        onChange={(event) =>
+                          updatePrice(vi, pi, { amount: event.target.value })
+                        }
                       />
                     </Field>
                   ))}
@@ -322,7 +446,11 @@ function ProductModal({
                   <Button
                     type="button"
                     variant="danger"
-                    onClick={() => setVariants((current) => current.filter((_, i) => i !== vi))}
+                    onClick={() =>
+                      setVariants((current) =>
+                        current.filter((_, i) => i !== vi),
+                      )
+                    }
                   >
                     Eliminar modelo
                   </Button>
