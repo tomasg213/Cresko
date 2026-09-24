@@ -74,3 +74,18 @@ def test_update_org_applies_changes_to_current_org() -> None:
     assert params["id"] == "eq.org-a"
 
     app.dependency_overrides.clear()
+
+
+def test_update_org_normalizes_tax_id_as_rif() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: context(["org.manage"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.patch("/v1/orgs", json={"tax_id": "123456789"})
+
+    assert response.status_code == 200
+    payload, _ = fake.captured_patch
+    assert payload["tax_id"] == "J-12345678-9"
+
+    app.dependency_overrides.clear()

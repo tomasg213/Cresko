@@ -186,6 +186,63 @@ def test_create_customer_calls_rpc_with_org() -> None:
     app.dependency_overrides.clear()
 
 
+def test_create_customer_normalizes_ci_format() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["sales.checkout"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/pos/customers",
+        json={"name": "Maria", "document_type": "ci", "document_id": "20128559"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_customer"
+    assert payload["p_document_id"] == "V-20.128.559"
+
+    app.dependency_overrides.clear()
+
+
+def test_create_customer_normalizes_rif_format() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["sales.checkout"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/pos/customers",
+        json={"name": "Comercial", "document_type": "rif", "document_id": "302345678"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_customer"
+    assert payload["p_document_id"] == "J-30234567-8"
+
+    app.dependency_overrides.clear()
+
+
+def test_create_customer_normalizes_passport_format() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["sales.checkout"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/pos/customers",
+        json={"name": "Maria", "document_type": "passport", "document_id": "123456789"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_customer"
+    assert payload["p_document_id"] == "E-123456789"
+
+    app.dependency_overrides.clear()
+
+
 def test_invoice_list_is_scoped_to_org() -> None:
     app.dependency_overrides[get_current_membership] = lambda: _context([])
     fake = _FakeRepository()

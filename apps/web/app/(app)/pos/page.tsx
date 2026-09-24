@@ -4,13 +4,34 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Button, Card, ErrorState, Field, Input, LoadingState, Select } from "@/components/ui";
+import {
+  Button,
+  Card,
+  ErrorState,
+  Field,
+  Input,
+  LoadingState,
+  Select,
+} from "@/components/ui";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import { findVariantByBarcode, loadCatalog, saveCatalog } from "@/lib/catalogCache";
+import {
+  findVariantByBarcode,
+  loadCatalog,
+  saveCatalog,
+} from "@/lib/catalogCache";
 import { PrintDialog } from "@/components/sale-document";
+import { formatDocument } from "@/lib/documents";
 import BarcodeScannerModal from "@/components/barcode-scanner";
-import type { FxRate, Invoice, Party, Product, StockLevel, Variant, WarehouseRef } from "@/lib/types";
+import type {
+  FxRate,
+  Invoice,
+  Party,
+  Product,
+  StockLevel,
+  Variant,
+  WarehouseRef,
+} from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
 type CartLine = {
@@ -34,7 +55,9 @@ export default function PosPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [priceList, setPriceList] = useState<"retail" | "wholesale">("retail");
   const [warehouseId, setWarehouseId] = useState("");
-  const [customerMode, setCustomerMode] = useState<"current" | "registered">("current");
+  const [customerMode, setCustomerMode] = useState<"current" | "registered">(
+    "current",
+  );
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [paid, setPaid] = useState("");
@@ -86,7 +109,11 @@ export default function PosPage() {
   useEffect(() => {
     if (orgId) {
       void loadCatalog(orgId).then((cached) => {
-        if (cached && cached.length > 0 && !queryClient.getQueryData(["catalog", orgId])) {
+        if (
+          cached &&
+          cached.length > 0 &&
+          !queryClient.getQueryData(["catalog", orgId])
+        ) {
           queryClient.setQueryData(["catalog", orgId], cached);
         }
       });
@@ -108,7 +135,9 @@ export default function PosPage() {
       const unitPrice = getPrice(variant);
       if (existing) {
         return current.map((line) =>
-          line.variant.id === variant.id ? { ...line, qty: line.qty + 1 } : line,
+          line.variant.id === variant.id
+            ? { ...line, qty: line.qty + 1 }
+            : line,
         );
       }
       if (unitPrice === null) return current;
@@ -118,7 +147,8 @@ export default function PosPage() {
 
   function getPrice(variant: Variant): number | null {
     const price = variant.variant_prices.find(
-      (p) => p.currency === "USD" && (p.price_list?.code ?? "retail") === priceList,
+      (p) =>
+        p.currency === "USD" && (p.price_list?.code ?? "retail") === priceList,
     );
     return price ? Number(price.amount) : null;
   }
@@ -163,12 +193,16 @@ export default function PosPage() {
     const catalog = products.data ?? [];
     const byBarcode = findVariantByBarcode(catalog, code);
     if (byBarcode) {
-      const product = catalog.find((p) => p.product_variants.some((v) => v.id === byBarcode.id));
+      const product = catalog.find((p) =>
+        p.product_variants.some((v) => v.id === byBarcode.id),
+      );
       return product ? { product, variant: byBarcode } : null;
     }
     const q = code.toLowerCase();
     for (const product of catalog) {
-      const variant = product.product_variants.find((v) => v.sku.toLowerCase() === q);
+      const variant = product.product_variants.find(
+        (v) => v.sku.toLowerCase() === q,
+      );
       if (variant) return { product, variant };
     }
     return null;
@@ -197,14 +231,16 @@ export default function PosPage() {
     inputRef.current?.focus();
   }
 
-function handleScannedCode(code: string) {
+  function handleScannedCode(code: string) {
     setScannerOpen(false);
     const entry = findExactByCode(code);
     if (entry) {
       handleAdd(entry);
       return;
     }
-    setError(`No se encontró el código "${code}". Agrégalo al catálogo o revisa el código.`);
+    setError(
+      `No se encontró el código "${code}". Agrégalo al catálogo o revisa el código.`,
+    );
     inputRef.current?.focus();
   }
 
@@ -222,7 +258,9 @@ function handleScannedCode(code: string) {
       handleAdd(results[index]);
       return;
     }
-    setError(`No se encontró "${trimmedQuery}". Agrégalo al catálogo o revisa el nombre.`);
+    setError(
+      `No se encontró "${trimmedQuery}". Agrégalo al catálogo o revisa el nombre.`,
+    );
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {
@@ -234,20 +272,27 @@ function handleScannedCode(code: string) {
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       if (results.length > 0) {
-        setHighlightedIndex((current) => (current - 1 + results.length) % results.length);
+        setHighlightedIndex(
+          (current) => (current - 1 + results.length) % results.length,
+        );
       }
     }
   }
 
   function updateQty(index: number, qty: number) {
-    setCart((current) => current.map((line, i) => (i === index ? { ...line, qty } : line)));
+    setCart((current) =>
+      current.map((line, i) => (i === index ? { ...line, qty } : line)),
+    );
   }
 
   function removeLine(index: number) {
     setCart((current) => current.filter((_, i) => i !== index));
   }
 
-  const subtotalUsd = cart.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
+  const subtotalUsd = cart.reduce(
+    (sum, line) => sum + line.unitPrice * line.qty,
+    0,
+  );
   const subtotal = exchangeRate ? subtotalUsd * exchangeRate : 0;
   const taxUsd = cart.reduce((sum, line) => {
     if (!line.taxable) return sum;
@@ -264,7 +309,9 @@ function handleScannedCode(code: string) {
       return;
     }
     if (paymentMethod === "credit" && !selectedCustomerId) {
-      setError("Para vender a crédito debes seleccionar un cliente registrado o crear uno nuevo.");
+      setError(
+        "Para vender a crédito debes seleccionar un cliente registrado o crear uno nuevo.",
+      );
       return;
     }
     setSubmitting(true);
@@ -278,14 +325,20 @@ function handleScannedCode(code: string) {
           warehouse_id: warehouseId,
           price_list_code: priceList,
           tax_rate: 16,
-          lines: cart.map((line) => ({ variant_id: line.variant.id, qty: line.qty })),
+          lines: cart.map((line) => ({
+            variant_id: line.variant.id,
+            qty: line.qty,
+          })),
           payment_method: paymentMethod,
-          paid_amount: paymentMethod === "credit" ? (paid ? Number(paid) : 0) : totalUsd,
+          paid_amount:
+            paymentMethod === "credit" ? (paid ? Number(paid) : 0) : totalUsd,
           party_id: selectedCustomerId || undefined,
         },
       });
       setResult(invoice);
-      const full = await api<Invoice>(`/v1/pos/invoices/${invoice.id}`, { orgId });
+      const full = await api<Invoice>(`/v1/pos/invoices/${invoice.id}`, {
+        orgId,
+      });
       setPrintInvoice(full);
       setCart([]);
       setPaid("");
@@ -294,7 +347,9 @@ function handleScannedCode(code: string) {
       queryClient.invalidateQueries({ queryKey: ["stock", orgId] });
       queryClient.invalidateQueries({ queryKey: ["ar-balances", orgId] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo completar la venta");
+      setError(
+        err instanceof Error ? err.message : "No se pudo completar la venta",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -303,7 +358,9 @@ function handleScannedCode(code: string) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Punto de venta</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Punto de venta
+        </h1>
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <Camera className="h-4 w-4" />
           Escanea un código o busca por nombre
@@ -350,7 +407,9 @@ function handleScannedCode(code: string) {
                         onClick={() => handleAdd(entry)}
                         onMouseEnter={() => setHighlightedIndex(index)}
                         className={`flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5 text-left ${
-                          index === highlightedIndex ? "bg-primary/10" : "hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800"
+                          index === highlightedIndex
+                            ? "bg-primary/10"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800"
                         }`}
                       >
                         <div className="min-w-0">
@@ -396,15 +455,24 @@ function handleScannedCode(code: string) {
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {cart.map((line, index) => (
-                  <div key={line.variant.id} className="flex items-center gap-4 px-5 py-3">
+                  <div
+                    key={line.variant.id}
+                    className="flex items-center gap-4 px-5 py-3"
+                  >
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{line.variant.name}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{line.variant.sku}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {line.variant.name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {line.variant.sku}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         className="rounded border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm"
-                        onClick={() => updateQty(index, Math.max(0, line.qty - 1))}
+                        onClick={() =>
+                          updateQty(index, Math.max(0, line.qty - 1))
+                        }
                       >
                         −
                       </button>
@@ -413,7 +481,14 @@ function handleScannedCode(code: string) {
                         min="0"
                         step="0.001"
                         value={line.qty}
-                        onChange={(event) => updateQty(index, event.target.value === "" ? 0 : Number(event.target.value))}
+                        onChange={(event) =>
+                          updateQty(
+                            index,
+                            event.target.value === ""
+                              ? 0
+                              : Number(event.target.value),
+                          )
+                        }
                         className="w-20 px-2 text-center"
                       />
                       <button
@@ -426,7 +501,10 @@ function handleScannedCode(code: string) {
                     <div className="w-24 text-right text-sm font-semibold">
                       {formatMoney(String(line.unitPrice * line.qty), "USD")}
                     </div>
-                    <button className="text-slate-400 hover:text-red-600" onClick={() => removeLine(index)}>
+                    <button
+                      className="text-slate-400 hover:text-red-600"
+                      onClick={() => removeLine(index)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -441,14 +519,20 @@ function handleScannedCode(code: string) {
             <div className="mb-3">
               <Select
                 value={priceList}
-                onChange={(event) => setPriceList(event.target.value as "retail" | "wholesale")}
+                onChange={(event) =>
+                  setPriceList(event.target.value as "retail" | "wholesale")
+                }
                 className="w-full"
               >
                 <option value="retail">Detal (USD)</option>
                 <option value="wholesale">Mayor (USD)</option>
               </Select>
             </div>
-            <Select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} className="mb-3 w-full">
+            <Select
+              value={warehouseId}
+              onChange={(event) => setWarehouseId(event.target.value)}
+              className="mb-3 w-full"
+            >
               <option value="">Almacén...</option>
               {(warehouses.data ?? []).map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
@@ -487,7 +571,9 @@ function handleScannedCode(code: string) {
               {customerMode === "registered" ? (
                 <Select
                   value={selectedCustomerId}
-                  onChange={(event) => setSelectedCustomerId(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedCustomerId(event.target.value)
+                  }
                   className="w-full"
                 >
                   <option value="">Seleccionar cliente...</option>
@@ -537,12 +623,14 @@ function handleScannedCode(code: string) {
             </div>
             {paymentMethod === "credit" && (
               <div className="mb-3 text-xs text-amber-700">
-                Se registrará una cuenta por cobrar por el saldo. Debes indicar el cliente.
+                Se registrará una cuenta por cobrar por el saldo. Debes indicar
+                el cliente.
               </div>
             )}
             {exchangeRate === null ? (
               <div className="rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-700">
-                No hay tasa BCV configurada. Regístrala en Configuración para poder cobrar.
+                No hay tasa BCV configurada. Regístrala en Configuración para
+                poder cobrar.
               </div>
             ) : (
               <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
@@ -551,12 +639,20 @@ function handleScannedCode(code: string) {
             )}
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
-                <span className="font-medium">{formatMoney(String(subtotal), "VES")}</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  Subtotal
+                </span>
+                <span className="font-medium">
+                  {formatMoney(String(subtotal), "VES")}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">IVA (16%)</span>
-                <span className="font-medium">{formatMoney(String(tax), "VES")}</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  IVA (16%)
+                </span>
+                <span className="font-medium">
+                  {formatMoney(String(tax), "VES")}
+                </span>
               </div>
               <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-base font-semibold">
                 <span>Total (Bs.)</span>
@@ -574,13 +670,16 @@ function handleScannedCode(code: string) {
               />
             ) : (
               <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-600 dark:text-slate-400">
-                Contado: se registra el pago del total ({formatMoney(String(total), "VES")})
+                Contado: se registra el pago del total (
+                {formatMoney(String(total), "VES")})
               </div>
             )}
             <Button
               className="mt-3 w-full"
               onClick={handleCheckout}
-              disabled={submitting || cart.length === 0 || exchangeRate === null}
+              disabled={
+                submitting || cart.length === 0 || exchangeRate === null
+              }
             >
               {submitting ? "Procesando..." : "Cobrar"}
             </Button>
@@ -655,31 +754,45 @@ function NewCustomerModal({
         body: {
           name,
           document_type: documentType,
-          document_id: documentId || null,
+          document_id: formatDocument(documentType, documentId) || null,
           phone: phone || null,
           email: email || null,
         },
       });
       onCreated(customer);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo registrar el cliente");
+      setError(
+        err instanceof Error ? err.message : "No se pudo registrar el cliente",
+      );
       setSubmitting(false);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <form onSubmit={handleSubmit} className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg"
+      >
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Nuevo cliente</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Nuevo cliente
+          </h2>
         </div>
         <div className="space-y-4 px-6 py-5">
           <Field label="Nombre">
-            <Input required value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Tipo de documento">
-              <Select value={documentType} onChange={(event) => setDocumentType(event.target.value)}>
+              <Select
+                value={documentType}
+                onChange={(event) => setDocumentType(event.target.value)}
+              >
                 <option value="rif">RIF</option>
                 <option value="ci">Cédula</option>
                 <option value="passport">Pasaporte</option>
@@ -687,15 +800,38 @@ function NewCustomerModal({
               </Select>
             </Field>
             <Field label="Número">
-              <Input value={documentId} onChange={(event) => setDocumentId(event.target.value)} />
+              <Input
+                value={documentId}
+                onChange={(event) =>
+                  setDocumentId(
+                    formatDocument(documentType, event.target.value),
+                  )
+                }
+                placeholder={
+                  documentType === "ci"
+                    ? "V-12.345.678"
+                    : documentType === "rif"
+                      ? "J-12345678-9"
+                      : documentType === "passport"
+                        ? "E-123456789"
+                        : ""
+                }
+              />
             </Field>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Teléfono">
-              <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <Input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+              />
             </Field>
             <Field label="Correo">
-              <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
             </Field>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}

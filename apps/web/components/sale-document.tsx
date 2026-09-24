@@ -7,12 +7,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
+import { formatDocument } from "@/lib/documents";
 import type { Invoice, Organization } from "@/lib/types";
 import { formatMoney, formatQty } from "@/lib/utils";
 
 type DocType = "factura" | "nota";
 
-export function PrintDialog({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+export function PrintDialog({
+  invoice,
+  onClose,
+}: {
+  invoice: Invoice;
+  onClose: () => void;
+}) {
   const { orgId } = useOrg();
   const [docType, setDocType] = useState<DocType>("factura");
 
@@ -68,16 +75,28 @@ export function PrintDialog({ invoice, onClose }: { invoice: Invoice; onClose: (
   );
 }
 
-function CompanyHeader({ company, title }: { company: Organization | undefined; title: string }) {
+function CompanyHeader({
+  company,
+  title,
+}: {
+  company: Organization | undefined;
+  title: string;
+}) {
   return (
     <div className="mb-2 text-center">
       <div className="text-sm font-bold uppercase tracking-wide">
         {company?.name ?? "Mi Comercio"}
       </div>
-      {company?.tax_id && <div className="text-[10px]">RIF: {company.tax_id}</div>}
-      {company?.legal_name && <div className="text-[10px]">{company.legal_name}</div>}
+      {company?.tax_id && (
+        <div className="text-[10px]">RIF: {company.tax_id}</div>
+      )}
+      {company?.legal_name && (
+        <div className="text-[10px]">{company.legal_name}</div>
+      )}
       <div className="text-[10px]">Tel: ----------</div>
-      <div className="mt-1 text-base font-black uppercase tracking-widest">{title}</div>
+      <div className="mt-1 text-base font-black uppercase tracking-widest">
+        {title}
+      </div>
       <Divider />
     </div>
   );
@@ -96,20 +115,29 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Factura({ invoice, company }: { invoice: Invoice; company: Organization | undefined }) {
+function Factura({
+  invoice,
+  company,
+}: {
+  invoice: Invoice;
+  company: Organization | undefined;
+}) {
   const party = invoice.party;
   return (
     <>
       <CompanyHeader company={company} title="Factura" />
       <Row label="Nº Factura" value={invoice.number} />
       <Row label="Nº Control" value={invoice.number} />
-      <Row label="Fecha" value={new Date(invoice.created_at).toLocaleDateString("es-VE")} />
+      <Row
+        label="Fecha"
+        value={new Date(invoice.created_at).toLocaleDateString("es-VE")}
+      />
       <Divider />
       <div className="text-[10px] font-semibold uppercase">Cliente</div>
       <div>{party?.name ?? "Consumidor final"}</div>
       <div className="text-[10px]">
         {party?.document_id
-          ? `${(party.document_type ?? "otro").toUpperCase()} ${party.document_id}`
+          ? formatDocument(party.document_type ?? "other", party.document_id)
           : "C.I.: ----------"}
       </div>
       <Divider />
@@ -142,33 +170,46 @@ function Factura({ invoice, company }: { invoice: Invoice; company: Organization
       <Divider />
 
       <Row label="Subtotal" value={formatMoney(invoice.subtotal, "VES")} />
-      <Row label={`IVA (${formatQty(invoice.tax_rate)}%)`} value={formatMoney(invoice.tax, "VES")} />
+      <Row
+        label={`IVA (${formatQty(invoice.tax_rate)}%)`}
+        value={formatMoney(invoice.tax, "VES")}
+      />
       <div className="mt-1 flex justify-between border-t border-dashed border-slate-800 pt-1 text-sm font-black">
         <span>TOTAL</span>
         <span>{formatMoney(invoice.total, "VES")}</span>
       </div>
 
       <p className="mt-3 text-center text-[9px] text-slate-500">
-        Factura reglamentaria sujeta a las disposiciones del SENIAT (Ley de IVA y su Reglamento).
+        Factura reglamentaria sujeta a las disposiciones del SENIAT (Ley de IVA
+        y su Reglamento).
       </p>
     </>
   );
 }
 
-function NotaEntrega({ invoice, company }: { invoice: Invoice; company: Organization | undefined }) {
+function NotaEntrega({
+  invoice,
+  company,
+}: {
+  invoice: Invoice;
+  company: Organization | undefined;
+}) {
   const party = invoice.party;
   return (
     <>
       <CompanyHeader company={company} title="Nota de entrega" />
       <Row label="Nº" value={invoice.number} />
       <Row label="Factura" value={invoice.number} />
-      <Row label="Fecha" value={new Date(invoice.created_at).toLocaleDateString("es-VE")} />
+      <Row
+        label="Fecha"
+        value={new Date(invoice.created_at).toLocaleDateString("es-VE")}
+      />
       <Divider />
       <div className="text-[10px] font-semibold uppercase">Entregado a</div>
       <div>{party?.name ?? "Consumidor final"}</div>
       <div className="text-[10px]">
         {party?.document_id
-          ? `${(party.document_type ?? "otro").toUpperCase()} ${party.document_id}`
+          ? formatDocument(party.document_type ?? "other", party.document_id)
           : "C.I.: ----------"}
       </div>
       <Divider />
@@ -185,7 +226,9 @@ function NotaEntrega({ invoice, company }: { invoice: Invoice; company: Organiza
           {invoice.invoice_lines.map((line) => (
             <tr key={line.id}>
               <td className="py-0.5 pr-1 align-top">{formatQty(line.qty)}</td>
-              <td className="py-0.5 pr-1 align-top">{line.variant?.name ?? line.variant_id}</td>
+              <td className="py-0.5 pr-1 align-top">
+                {line.variant?.name ?? line.variant_id}
+              </td>
               <td className="py-0.5 text-right align-top font-medium">
                 {formatMoney(line.line_total, "VES")}
               </td>
@@ -202,7 +245,9 @@ function NotaEntrega({ invoice, company }: { invoice: Invoice; company: Organiza
       </div>
 
       <div className="mt-3 border border-dashed border-slate-400 p-2 text-[10px] text-slate-600">
-        <div className="mb-2 font-semibold uppercase text-slate-700">Recibí conforme</div>
+        <div className="mb-2 font-semibold uppercase text-slate-700">
+          Recibí conforme
+        </div>
         <div className="flex items-end justify-between gap-2">
           <div className="flex-1 border-b border-slate-400" />
           <div className="flex-1 border-b border-slate-400" />
@@ -214,7 +259,8 @@ function NotaEntrega({ invoice, company }: { invoice: Invoice; company: Organiza
       </div>
 
       <p className="mt-2 text-center text-[9px] text-slate-500">
-        Documento no fiscal. No constituye factura. La factura se emite por separado.
+        Documento no fiscal. No constituye factura. La factura se emite por
+        separado.
       </p>
     </>
   );

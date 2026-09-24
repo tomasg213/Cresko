@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .documents import format_document, format_rif
+
 
 class Permission(StrEnum):
     ORG_MANAGE = "org.manage"
@@ -109,6 +111,11 @@ class OrganizationUpdate(BaseModel):
     legal_name: str | None = Field(default=None, max_length=200)
     tax_id: str | None = Field(default=None, max_length=32)
     default_currency: Literal["VES", "USD"] | None = None
+
+    @field_validator("tax_id")
+    @classmethod
+    def _format_tax_id(cls, value: str | None) -> str | None:
+        return format_rif(value)
 
 
 class FxRateOut(BaseModel):
@@ -271,6 +278,12 @@ class PartyIn(BaseModel):
     phone: str | None = Field(default=None, max_length=32)
     email: str | None = None
 
+    @field_validator("document_id")
+    @classmethod
+    def _format_document(cls, value: str | None, info: Any) -> str | None:
+        doc_type = info.data.get("document_type", "other")
+        return format_document(doc_type, value)
+
 
 class CheckoutIn(BaseModel):
     warehouse_id: str
@@ -289,6 +302,12 @@ class PosCustomerCreate(BaseModel):
     document_id: str | None = Field(default=None, max_length=32)
     phone: str | None = Field(default=None, max_length=32)
     email: str | None = None
+
+    @field_validator("document_id")
+    @classmethod
+    def _format_document(cls, value: str | None, info: Any) -> str | None:
+        doc_type = info.data.get("document_type", "other")
+        return format_document(doc_type, value)
 
 
 class InvoiceLineOut(BaseModel):
@@ -350,6 +369,12 @@ class PartyCreate(BaseModel):
     email: str | None = None
     is_customer: bool = False
     is_supplier: bool = False
+
+    @field_validator("document_id")
+    @classmethod
+    def _format_document(cls, value: str | None, info: Any) -> str | None:
+        doc_type = info.data.get("document_type", "other")
+        return format_document(doc_type, value)
 
 
 class PoLineIn(BaseModel):
@@ -436,6 +461,13 @@ class SupplierPaymentIn(BaseModel):
     method: Literal["cash", "card", "transfer"] = "cash"
 
 
+class GeneralPaymentIn(BaseModel):
+    party_id: str
+    amount: Decimal = Field(gt=0)
+    currency: Literal["VES", "USD"]
+    method: Literal["cash", "card", "transfer"] = "cash"
+
+
 class BalanceOut(BaseModel):
     party_id: str
     party_name: str | None = None
@@ -445,6 +477,15 @@ class BalanceOut(BaseModel):
 
 class ArReceivable(BaseModel):
     invoice_id: str
+    invoice_number: str
+    party_id: str
+    party_name: str | None = None
+    currency: str
+    balance: Decimal
+
+
+class ApReceivable(BaseModel):
+    supplier_invoice_id: str
     invoice_number: str
     party_id: str
     party_name: str | None = None
@@ -513,6 +554,12 @@ class PartyUpdate(BaseModel):
     email: str | None = None
     is_customer: bool | None = None
     is_supplier: bool | None = None
+
+    @field_validator("document_id")
+    @classmethod
+    def _format_document(cls, value: str | None, info: Any) -> str | None:
+        doc_type = info.data.get("document_type") or "other"
+        return format_document(doc_type, value)
 
 
 class ArPaymentOut(BaseModel):

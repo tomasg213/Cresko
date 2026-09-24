@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, Field, Input, Select } from "@/components/ui";
 import { Logo } from "@/components/logo";
+import { formatRif } from "@/lib/documents";
 import { createClient } from "@/lib/supabase/client";
 
 export default function OnboardingPage() {
@@ -48,7 +49,7 @@ export default function OnboardingPage() {
       .insert({
         name,
         legal_name: legalName || null,
-        tax_id: taxId || null,
+        tax_id: taxId ? formatRif(taxId) : null,
         default_currency: currency,
         created_by: userId,
       })
@@ -130,35 +131,62 @@ export default function OnboardingPage() {
           <div className="flex items-center gap-3">
             <Logo className="h-10 w-10" />
             <div>
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Configura tu comercio</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Crea la organización y su sucursal inicial</p>
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Configura tu comercio
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Crea la organización y su sucursal inicial
+              </p>
             </div>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           <Field label="Nombre del comercio">
-            <Input required value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Razón social">
-              <Input value={legalName} onChange={(event) => setLegalName(event.target.value)} />
+              <Input
+                value={legalName}
+                onChange={(event) => setLegalName(event.target.value)}
+              />
             </Field>
             <Field label="RIF">
-              <Input value={taxId} onChange={(event) => setTaxId(event.target.value)} />
+              <Input
+                value={taxId}
+                onChange={(event) => setTaxId(formatRif(event.target.value))}
+                placeholder="J-12345678-9"
+              />
             </Field>
           </div>
           <Field label="Moneda por defecto">
-            <Select className="w-full" value={currency} onChange={(event) => setCurrency(event.target.value)}>
+            <Select
+              className="w-full"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value)}
+            >
               <option value="VES">Bolívares (VES)</option>
               <option value="USD">Dólares (USD)</option>
             </Select>
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Sucursal">
-              <Input required value={branchName} onChange={(event) => setBranchName(event.target.value)} />
+              <Input
+                required
+                value={branchName}
+                onChange={(event) => setBranchName(event.target.value)}
+              />
             </Field>
             <Field label="Almacén">
-              <Input required value={warehouseName} onChange={(event) => setWarehouseName(event.target.value)} />
+              <Input
+                required
+                value={warehouseName}
+                onChange={(event) => setWarehouseName(event.target.value)}
+              />
             </Field>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
