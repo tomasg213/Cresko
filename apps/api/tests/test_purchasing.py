@@ -14,7 +14,7 @@ class _FakeRepository:
 
     async def get_json(self, resource: str, params: dict[str, str]) -> list[dict]:
         self.captured_params = params
-        if resource in ("ar_balances", "ap_balances", "ar_receivables"):
+        if resource in ("ar_balances", "ap_balances", "ar_receivables", "ap_receivables"):
             return self.balances
         return []
 
@@ -40,6 +40,8 @@ class _FakeRepository:
                     "preferred_supplier_id": None,
                 }
             ]
+        if function in ("cresko_apply_ar_payment", "cresko_apply_ap_payment"):
+            return [{"invoice_id": "inv-1", "amount": payload["p_amount"]}]
         if function == "cresko_receive_goods":
             return {
                 "id": "gr-1",
@@ -186,6 +188,117 @@ def test_ar_receivables_returns_invoice_number() -> None:
     assert response.status_code == 200
     assert fake.captured_params["org_id"] == "eq.org-a"
     assert response.json()[0]["invoice_number"] == "FAC-00000001"
+
+    app.dependency_overrides.clear()
+
+
+def test_ap_receivables_scoped_to_org() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context([])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.get("/v1/ap/receivables")
+
+    assert response.status_code == 200
+    assert fake.captured_params["org_id"] == "eq.org-a"
+
+    app.dependency_overrides.clear()
+
+
+def test_ap_receivables_returns_invoice_number() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context([])
+    fake = _FakeRepository()
+    fake.balances = [
+        {
+            "supplier_invoice_id": "si-1",
+            "invoice_number": "CMP-00000001",
+            "party_id": "p1",
+            "party_name": "Proveedor SA",
+            "currency": "USD",
+            "balance": "120.00",
+        }
+    ]
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.get("/v1/ap/receivables")
+
+    assert response.status_code == 200
+    assert response.json()[0]["supplier_invoice_id"] == "si-1"
+    assert response.json()[0]["invoice_number"] == "CMP-00000001"
+
+    app.dependency_overrides.clear()
+
+
+def test_general_ar_payment_requires_permission() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context([])
+    app.dependency_overrides[get_supabase_repository] = _FakeRepository
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/ar/payments/general",
+        json={"party_id": "p1", "amount": 50, "currency": "USD", "method": "cash"},
+    )
+
+    assert response.status_code == 403
+
+    app.dependency_overrides.clear()
+
+
+def test_general_ar_payment_calls_rpc() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["finance.receive"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/ar/payments/general",
+        json={"party_id": "p1", "amount": 50, "currency": "USD", "method": "transfer"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_apply_ar_payment"
+    assert payload["p_org_id"] == "org-a"
+    assert payload["p_party_id"] == "p1"
+    assert payload["p_amount"] == "50"
+
+    app.dependency_overrides.clear()
+
+
+def test_general_ap_payment_requires_permission() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context([])
+    app.dependency_overrides[get_supabase_repository] = _FakeRepository
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/ap/payments/general",
+        json={"party_id": "p1", "amount": 80, "currency": "USD", "method": "cash"},
+    )
+
+    assert response.status_code == 403
+
+    app.dependency_overrides.clear()
+
+
+def test_general_ap_payment_calls_rpc() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["finance.pay"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/ap/payments/general",
+        json={"party_id": "p1", "amount": 80, "currency": "USD", "method": "cash"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_apply_ap_payment"
+    assert payload["p_org_id"] == "org-a"
+    assert payload["p_party_id"] == "p1"
+    assert payload["p_amount"] == "80"
 
     app.dependency_overrides.clear()
 

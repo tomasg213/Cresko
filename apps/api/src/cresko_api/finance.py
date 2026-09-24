@@ -6,9 +6,11 @@ from .dependencies import get_current_membership, get_supabase_repository, requi
 from .repositories import SupabaseRepository
 from .schemas import (
     ApPaymentOut,
+    ApReceivable,
     ArPaymentOut,
     ArReceivable,
     BalanceOut,
+    GeneralPaymentIn,
     OrganizationContext,
     PaymentIn,
     Permission,
@@ -71,6 +73,19 @@ async def ap_balances(
         params["party_id"] = f"eq.{party_id}"
     rows = await repository.get_json("ap_balances", params)
     return [BalanceOut.model_validate(row) for row in rows]
+
+
+@router.get("/ap/receivables", response_model=list[ApReceivable])
+async def ap_receivables(
+    context: Annotated[OrganizationContext, Depends(get_current_membership)],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+    party_id: str | None = None,
+) -> list[ApReceivable]:
+    params: dict[str, str] = {"org_id": f"eq.{context.org_id}"}
+    if party_id:
+        params["party_id"] = f"eq.{party_id}"
+    rows = await repository.get_json("ap_receivables", params)
+    return [ApReceivable.model_validate(row) for row in rows]
 
 
 @router.get("/ar/payments", response_model=list[ArPaymentOut])
@@ -190,6 +205,27 @@ async def receive_payment(
     )
 
 
+@router.post("/ar/payments/general", status_code=201)
+async def receive_general_payment(
+    payload: GeneralPaymentIn,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.FINANCE_RECEIVE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> list[dict]:
+    return await repository.rpc(
+        "cresko_apply_ar_payment",
+        {
+            "p_org_id": context.org_id,
+            "p_party_id": payload.party_id,
+            "p_amount": str(payload.amount),
+            "p_currency": payload.currency,
+            "p_method": payload.method,
+        },
+    )
+
+
 @router.post("/ap/payments", status_code=201)
 async def pay_supplier(
     payload: SupplierPaymentIn,
@@ -204,6 +240,27 @@ async def pay_supplier(
         {
             "p_org_id": context.org_id,
             "p_supplier_invoice_id": payload.supplier_invoice_id,
+            "p_amount": str(payload.amount),
+            "p_currency": payload.currency,
+            "p_method": payload.method,
+        },
+    )
+
+
+@router.post("/ap/payments/general", status_code=201)
+async def pay_supplier_general(
+    payload: GeneralPaymentIn,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.FINANCE_PAY)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> list[dict]:
+    return await repository.rpc(
+        "cresko_apply_ap_payment",
+        {
+            "p_org_id": context.org_id,
+            "p_party_id": payload.party_id,
             "p_amount": str(payload.amount),
             "p_currency": payload.currency,
             "p_method": payload.method,

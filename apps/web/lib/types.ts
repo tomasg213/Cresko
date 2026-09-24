@@ -243,6 +243,15 @@ export type ArReceivable = {
   balance: string;
 };
 
+export type ApReceivable = {
+  supplier_invoice_id: string;
+  invoice_number: string;
+  party_id: string;
+  party_name: string | null;
+  currency: "VES" | "USD";
+  balance: string;
+};
+
 export type ReplenishmentItem = {
   variant_id: string;
   variant_name: string;
