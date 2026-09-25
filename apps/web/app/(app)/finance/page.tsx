@@ -181,22 +181,31 @@ function PartyCard({ group, tab }: { group: PartyGroup; tab: "ar" | "ap" }) {
     setGeneralMessage(null);
     try {
       const base = tab === "ar" ? "ar" : "ap";
-      const body =
-        base === "ar"
-          ? {
-              invoice_id: (invoice as ArReceivable).invoice_id,
-              amount: Number(invoice.balance),
-              currency: "USD",
-              method: "cash",
-            }
-          : {
-              supplier_invoice_id: (invoice as ApReceivable)
-                .supplier_invoice_id,
-              amount: Number(invoice.balance),
-              currency: "USD",
-              method: "cash",
-            };
-      await api(`/v1/${base}/payments`, { method: "POST", orgId, body });
+      if (base === "ar" && (invoice as ArReceivable).source === "order") {
+        const ar = invoice as ArReceivable;
+        await api(`/v1/orders/${ar.order_id}/pay`, {
+          method: "POST",
+          orgId,
+          body: { amount: Number(invoice.balance), method: "cash" },
+        });
+      } else {
+        const body =
+          base === "ar"
+            ? {
+                invoice_id: (invoice as ArReceivable).invoice_id,
+                amount: Number(invoice.balance),
+                currency: "USD",
+                method: "cash",
+              }
+            : {
+                supplier_invoice_id: (invoice as ApReceivable)
+                  .supplier_invoice_id,
+                amount: Number(invoice.balance),
+                currency: "USD",
+                method: "cash",
+              };
+        await api(`/v1/${base}/payments`, { method: "POST", orgId, body });
+      }
       setGeneralMessage("Pago registrado.");
       await invalidate();
     } catch (err) {
@@ -211,22 +220,31 @@ function PartyCard({ group, tab }: { group: PartyGroup; tab: "ar" | "ap" }) {
     setGeneralMessage(null);
     try {
       const base = tab === "ar" ? "ar" : "ap";
-      const body =
-        base === "ar"
-          ? {
-              invoice_id: (invoice as ArReceivable).invoice_id,
-              amount,
-              currency: "USD",
-              method: "cash",
-            }
-          : {
-              supplier_invoice_id: (invoice as ApReceivable)
-                .supplier_invoice_id,
-              amount,
-              currency: "USD",
-              method: "cash",
-            };
-      await api(`/v1/${base}/payments`, { method: "POST", orgId, body });
+      if (base === "ar" && (invoice as ArReceivable).source === "order") {
+        const ar = invoice as ArReceivable;
+        await api(`/v1/orders/${ar.order_id}/pay`, {
+          method: "POST",
+          orgId,
+          body: { amount, method: "cash" },
+        });
+      } else {
+        const body =
+          base === "ar"
+            ? {
+                invoice_id: (invoice as ArReceivable).invoice_id,
+                amount,
+                currency: "USD",
+                method: "cash",
+              }
+            : {
+                supplier_invoice_id: (invoice as ApReceivable)
+                  .supplier_invoice_id,
+                amount,
+                currency: "USD",
+                method: "cash",
+              };
+        await api(`/v1/${base}/payments`, { method: "POST", orgId, body });
+      }
       setAbonoFor(null);
       setGeneralMessage("Abono registrado.");
       await invalidate();
@@ -290,51 +308,54 @@ function PartyCard({ group, tab }: { group: PartyGroup; tab: "ar" | "ap" }) {
           )}
         </form>
 
-        <Table headers={["Factura", "Saldo", "Acciones"]}>
-          {group.invoices.map((invoice) => (
-            <tr
-              key={
-                "invoice_id" in invoice
+        <Table headers={["Documento", "Saldo", "Acciones"]}>
+          {group.invoices.map((invoice) => {
+            const ar = "source" in invoice ? (invoice as ArReceivable) : null;
+            const key =
+              ar?.source === "order"
+                ? `order-${ar.order_id}`
+                : "invoice_id" in invoice
                   ? invoice.invoice_id
-                  : invoice.supplier_invoice_id
-              }
-            >
-              <td className="px-5 py-3 font-medium text-primary">
-                {invoice.invoice_number}
-              </td>
-              <td className="px-5 py-3 font-semibold">
-                {formatMoney(invoice.balance, invoice.currency)}
-              </td>
-              <td className="px-5 py-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    className="px-3 py-1 text-xs"
-                    onClick={() => {
-                      setAbonoFor(abonoFor === invoice ? null : invoice);
-                      setGeneralError(null);
-                      setGeneralMessage(null);
-                    }}
-                  >
-                    Abonar
-                  </Button>
-                  <Button
-                    className="px-3 py-1 text-xs"
-                    onClick={() => payInvoice(invoice)}
-                  >
-                    Pagar
-                  </Button>
-                </div>
-                {abonoFor === invoice && (
-                  <AbonoForm
-                    invoice={invoice}
-                    onCancel={() => setAbonoFor(null)}
-                    onSubmit={(amount) => submitAbono(invoice, amount)}
-                  />
-                )}
-              </td>
-            </tr>
-          ))}
+                  : invoice.supplier_invoice_id;
+            return (
+              <tr key={key}>
+                <td className="px-5 py-3 font-medium text-primary">
+                  {invoice.invoice_number}
+                </td>
+                <td className="px-5 py-3 font-semibold">
+                  {formatMoney(invoice.balance, invoice.currency)}
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      className="px-3 py-1 text-xs"
+                      onClick={() => {
+                        setAbonoFor(abonoFor === invoice ? null : invoice);
+                        setGeneralError(null);
+                        setGeneralMessage(null);
+                      }}
+                    >
+                      Abonar
+                    </Button>
+                    <Button
+                      className="px-3 py-1 text-xs"
+                      onClick={() => payInvoice(invoice)}
+                    >
+                      Pagar
+                    </Button>
+                  </div>
+                  {abonoFor === invoice && (
+                    <AbonoForm
+                      invoice={invoice}
+                      onCancel={() => setAbonoFor(null)}
+                      onSubmit={(amount) => submitAbono(invoice, amount)}
+                    />
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </Table>
       </div>
     </Card>

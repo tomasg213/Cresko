@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
@@ -59,7 +60,33 @@ async def ar_receivables(
     if party_id:
         params["party_id"] = f"eq.{party_id}"
     rows = await repository.get_json("ar_receivables", params)
-    return [ArReceivable.model_validate(row) for row in rows]
+    result = [ArReceivable.model_validate(row) for row in rows]
+
+    # Pedidos entregados con saldo pendiente también son cuentas por cobrar.
+    order_params: dict[str, str] = {
+        "org_id": f"eq.{context.org_id}",
+        "delivery_status": "eq.delivered",
+    }
+    if party_id:
+        order_params["party_id"] = f"eq.{party_id}"
+    order_rows = await repository.get_json("order_receivables", order_params)
+    for row in order_rows:
+        balance = Decimal(row["balance"])
+        if balance <= 0:
+            continue
+        result.append(
+            ArReceivable(
+                invoice_id=None,
+                invoice_number=row["number"],
+                party_id=row["party_id"],
+                party_name=row.get("party_name"),
+                currency=row["currency"],
+                balance=balance,
+                source="order",
+                order_id=row["order_id"],
+            )
+        )
+    return result
 
 
 @router.get("/ap/balances", response_model=list[BalanceOut])

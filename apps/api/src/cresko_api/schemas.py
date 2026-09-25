@@ -476,12 +476,14 @@ class BalanceOut(BaseModel):
 
 
 class ArReceivable(BaseModel):
-    invoice_id: str
+    invoice_id: str | None = None
     invoice_number: str
     party_id: str
     party_name: str | None = None
     currency: str
     balance: Decimal
+    source: str = "invoice"
+    order_id: str | None = None
 
 
 class ApReceivable(BaseModel):

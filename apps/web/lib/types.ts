@@ -235,12 +235,14 @@ export type Balance = {
 };
 
 export type ArReceivable = {
-  invoice_id: string;
+  invoice_id: string | null;
   invoice_number: string;
   party_id: string;
   party_name: string | null;
   currency: "VES" | "USD";
   balance: string;
+  source?: "invoice" | "order";
+  order_id?: string | null;
 };
 
 export type ApReceivable = {
