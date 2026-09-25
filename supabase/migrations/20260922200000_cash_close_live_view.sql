@@ -37,7 +37,7 @@ union all
 select
   cc.id as cash_close_id,
   cc.org_id,
-  ('live-' || i.id::text)::uuid as id,
+  i.id,
   'invoice' as source,
   i.id as source_id,
   i.number,
@@ -77,7 +77,7 @@ union all
 select
   cc.id as cash_close_id,
   cc.org_id,
-  ('live-' || o.id::text)::uuid as id,
+  o.id,
   'order' as source,
   o.id as source_id,
   o.number,
