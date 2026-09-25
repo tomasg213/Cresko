@@ -355,7 +355,7 @@ function ConfigModal({
           <Field label="Mínimo">
             <Input
               type="number"
-              step="0.001"
+              step="0.01"
               min="0"
               value={minQty}
               onChange={(event) => setMinQty(event.target.value)}
@@ -365,7 +365,7 @@ function ConfigModal({
           <Field label="Máximo">
             <Input
               type="number"
-              step="0.001"
+              step="0.01"
               min="0"
               value={maxQty}
               onChange={(event) => setMaxQty(event.target.value)}
@@ -375,7 +375,7 @@ function ConfigModal({
           <Field label="Múltiplo">
             <Input
               type="number"
-              step="0.001"
+              step="0.01"
               min="0.001"
               value={packMultiple}
               onChange={(event) => setPackMultiple(event.target.value)}

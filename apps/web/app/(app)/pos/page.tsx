@@ -564,7 +564,7 @@ export default function PosPage() {
                       <Input
                         type="number"
                         min="0"
-                        step="0.001"
+                        step="0.01"
                         value={line.qty}
                         onChange={(event) =>
                           updateQty(
@@ -716,7 +716,7 @@ export default function PosPage() {
               </div>
             ) : (
               <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-                Tasa BCV: {formatMoney(exchangeRate.toFixed(4), "VES")} por USD
+                Tasa BCV: {formatMoney(exchangeRate.toFixed(2), "VES")} por USD
               </div>
             )}
 

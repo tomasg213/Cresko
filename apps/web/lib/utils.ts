@@ -12,9 +12,12 @@ export function formatMoney(amount: string, currency: string) {
 
 export function formatQty(qty: string) {
   const value = Number(qty);
-  return Number.isInteger(value) ? String(value) : value.toFixed(3);
+  return value.toFixed(2).replace(/\.00$/, "");
 }
 
 export function formatDate(value: string) {
-  return new Date(value).toLocaleString("es-VE", { dateStyle: "short", timeStyle: "short" });
+  return new Date(value).toLocaleString("es-VE", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }

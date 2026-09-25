@@ -352,7 +352,7 @@ function OrderModal({
                 <Field label="Cantidad">
                   <Input
                     type="number"
-                    step="0.001"
+                    step="0.01"
                     min="0"
                     value={line.qty}
                     onChange={(event) =>
