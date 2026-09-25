@@ -575,8 +575,8 @@ class ArPaymentOut(BaseModel):
 
 
 class OrderCreate(BaseModel):
+    product_id: str
     party_id: str
-    variant_id: str
     qty: Decimal = Field(gt=0)
     unit_cost: Decimal = Field(ge=0, default=Decimal(0))
     unit_price: Decimal = Field(ge=0)
@@ -587,6 +587,36 @@ class OrderCreate(BaseModel):
     payment_method: Literal["cash", "card", "transfer", "credit"] = "cash"
     expected_at: str | None = None
     notes: str | None = None
+
+
+class SpecialOrderProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=180)
+    sku: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=500)
+    unit_price: Decimal = Field(ge=0, default=Decimal(0))
+    currency: Literal["VES", "USD"] = "USD"
+
+
+class SpecialOrderProductUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=180)
+    sku: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=500)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+    currency: Literal["VES", "USD"] | None = None
+    is_active: bool | None = None
+
+
+class SpecialOrderProductOut(BaseModel):
+    id: str
+    org_id: str
+    name: str
+    sku: str | None = None
+    description: str | None = None
+    unit_price: Decimal
+    currency: str
+    is_active: bool
+    created_by: str
+    created_at: str
 
 
 class OrderPaymentIn(BaseModel):
@@ -600,8 +630,8 @@ class OrderOut(BaseModel):
     id: str
     org_id: str
     number: str
+    product_id: str
     party_id: str
-    variant_id: str
     qty: Decimal
     unit_cost: Decimal
     unit_price: Decimal
@@ -619,17 +649,17 @@ class OrderOut(BaseModel):
     created_by: str
     created_at: str
     party: PartyRef | None = None
-    variant: VariantRef | None = None
+    product: SpecialOrderProductOut | None = None
 
 
 class OrderReceivable(BaseModel):
     order_id: str
     number: str
+    product_id: str
+    product_name: str | None = None
+    product_sku: str | None = None
     party_id: str
     party_name: str | None = None
-    variant_id: str
-    variant_name: str | None = None
-    variant_sku: str | None = None
     currency: str
     total: Decimal
     paid_amount: Decimal

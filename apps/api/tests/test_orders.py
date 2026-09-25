@@ -10,6 +10,7 @@ class _FakeRepository:
         self.captured_params: dict[str, str] = {}
         self.captured_rpc: tuple[str, dict] | None = None
         self.orders: list[dict] = []
+        self.products: list[dict] = []
 
     async def get_json(self, resource: str, params: dict[str, str]) -> list[dict]:
         self.captured_params = params
@@ -19,17 +20,32 @@ class _FakeRepository:
             return self.orders
         if resource == "order_payments":
             return []
+        if resource == "special_order_products":
+            return self.products
         return []
 
     async def rpc(self, function: str, payload: dict):
         self.captured_rpc = (function, payload)
+        if function == "cresko_create_special_product":
+            return {
+                "id": "prod-1",
+                "org_id": payload["p_org_id"],
+                "name": payload["p_name"],
+                "sku": payload.get("p_sku"),
+                "description": payload.get("p_description"),
+                "unit_price": payload["p_unit_price"],
+                "currency": payload["p_currency"],
+                "is_active": True,
+                "created_by": "user-a",
+                "created_at": "2026-09-24T15:00:00Z",
+            }
         if function == "cresko_create_order":
             return {
                 "id": "order-1",
                 "org_id": payload["p_org_id"],
                 "number": "PED-00000001",
+                "product_id": payload["p_product_id"],
                 "party_id": payload["p_party_id"],
-                "variant_id": payload["p_variant_id"],
                 "qty": payload["p_qty"],
                 "unit_cost": payload["p_unit_cost"],
                 "unit_price": payload["p_unit_price"],
@@ -52,8 +68,8 @@ class _FakeRepository:
                 "id": "order-1",
                 "org_id": "org-a",
                 "number": "PED-00000001",
+                "product_id": "prod-1",
                 "party_id": "p1",
-                "variant_id": "v1",
                 "qty": "2",
                 "unit_cost": "8",
                 "unit_price": "10",
@@ -76,6 +92,27 @@ class _FakeRepository:
     async def post_json(self, resource: str, payload: dict, prefer: str | None = None) -> list[dict]:
         return []
 
+    async def patch_json(
+        self,
+        resource: str,
+        payload: dict,
+        params: dict[str, str],
+        prefer: str | None = None,
+    ) -> list[dict]:
+        self.captured_params = params
+        return [{
+            "id": "prod-1",
+            "org_id": "org-a",
+            "name": "Camisa Personalizada",
+            "sku": "CAM-01",
+            "description": None,
+            "unit_price": "15.00",
+            "currency": "USD",
+            "is_active": True,
+            "created_by": "user-a",
+            "created_at": "2026-09-24T15:00:00Z",
+        }]
+
 
 def _override(permissions: list[str]) -> _FakeRepository:
     app.dependency_overrides[get_current_membership] = lambda: context(permissions)
@@ -96,6 +133,61 @@ def test_list_orders_scoped_to_org() -> None:
     app.dependency_overrides.clear()
 
 
+def test_list_special_products_scoped_to_org() -> None:
+    fake = _override([])
+    client = TestClient(app)
+
+    response = client.get("/v1/orders/products")
+
+    assert response.status_code == 200
+    assert fake.captured_params["org_id"] == "eq.org-a"
+
+    app.dependency_overrides.clear()
+
+
+def test_create_special_product_requires_permission() -> None:
+    _override([])
+    client = TestClient(app)
+
+    response = client.post("/v1/orders/products", json={"name": "Camisa Personalizada"})
+
+    assert response.status_code == 403
+
+    app.dependency_overrides.clear()
+
+
+def test_create_special_product_calls_rpc() -> None:
+    fake = _override(["catalog.write"])
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/orders/products",
+        json={"name": "Camisa Personalizada", "sku": "CAM-01", "unit_price": 15, "currency": "USD"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_special_product"
+    assert payload["p_org_id"] == "org-a"
+    assert payload["p_name"] == "Camisa Personalizada"
+    assert response.json()["name"] == "Camisa Personalizada"
+
+    app.dependency_overrides.clear()
+
+
+def test_update_special_product_calls_patch() -> None:
+    fake = _override(["catalog.write"])
+    client = TestClient(app)
+
+    response = client.patch("/v1/orders/products/prod-1", json={"unit_price": 15})
+
+    assert response.status_code == 200
+    assert fake.captured_params["org_id"] == "eq.org-a"
+    assert fake.captured_params["id"] == "eq.prod-1"
+
+    app.dependency_overrides.clear()
+
+
 def test_create_order_requires_permission() -> None:
     _override([])
     client = TestClient(app)
@@ -103,8 +195,8 @@ def test_create_order_requires_permission() -> None:
     response = client.post(
         "/v1/orders",
         json={
+            "product_id": "prod-1",
             "party_id": "p1",
-            "variant_id": "v1",
             "qty": 2,
             "unit_price": 10,
             "paid_amount": 20,
@@ -123,8 +215,8 @@ def test_create_order_calls_rpc_with_org() -> None:
     response = client.post(
         "/v1/orders",
         json={
+            "product_id": "prod-1",
             "party_id": "p1",
-            "variant_id": "v1",
             "qty": 2,
             "unit_cost": 8,
             "unit_price": 10,
@@ -139,10 +231,23 @@ def test_create_order_calls_rpc_with_org() -> None:
     function, payload = fake.captured_rpc
     assert function == "cresko_create_order"
     assert payload["p_org_id"] == "org-a"
+    assert payload["p_product_id"] == "prod-1"
     assert payload["p_party_id"] == "p1"
     assert payload["p_qty"] == "2"
     assert payload["p_paid_amount"] == "20"
     assert response.json()["number"] == "PED-00000001"
+
+    app.dependency_overrides.clear()
+
+
+def test_orders_filtered_by_product() -> None:
+    fake = _override([])
+    client = TestClient(app)
+
+    response = client.get("/v1/orders?product_id=prod-1")
+
+    assert response.status_code == 200
+    assert fake.captured_params["product_id"] == "eq.prod-1"
 
     app.dependency_overrides.clear()
 

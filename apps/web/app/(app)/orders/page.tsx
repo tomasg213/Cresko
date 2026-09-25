@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeDollarSign, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, BadgeDollarSign, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -20,7 +20,7 @@ import {
 import { useFeedback } from "@/components/feedback";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import type { Order, Party, Product } from "@/lib/types";
+import type { Order, Party, SpecialOrderProduct } from "@/lib/types";
 import { formatMoney, formatQty } from "@/lib/utils";
 
 const STATUS_LABEL: Record<Order["status"], string> = {
@@ -35,19 +35,48 @@ export default function OrdersPage() {
   const queryClient = useQueryClient();
   const { confirm, notify } = useFeedback();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<SpecialOrderProduct | null>(null);
+  const [selected, setSelected] = useState<SpecialOrderProduct | null>(null);
+  const [orderModal, setOrderModal] = useState(false);
   const [payingOrder, setPayingOrder] = useState<Order | null>(null);
 
-  const orders = useQuery({
-    queryKey: ["orders", orgId],
-    queryFn: () => api<Order[]>(`/v1/orders`, { orgId }),
+  const products = useQuery({
+    queryKey: ["special-order-products", orgId],
+    queryFn: () => api<SpecialOrderProduct[]>(`/v1/orders/products`, { orgId }),
     enabled: !!orgId,
   });
 
+  const orders = useQuery({
+    queryKey: ["orders", orgId, selected?.id],
+    queryFn: () =>
+      api<Order[]>(`/v1/orders?product_id=${selected!.id}`, { orgId }),
+    enabled: !!orgId && !!selected,
+  });
+
   async function invalidate() {
+    queryClient.invalidateQueries({
+      queryKey: ["special-order-products", orgId],
+    });
     queryClient.invalidateQueries({ queryKey: ["orders", orgId] });
   }
 
-  async function handleCancel(order: Order) {
+  async function handleDelete(product: SpecialOrderProduct) {
+    if (!(await confirm(`¿Eliminar "${product.name}"?`))) return;
+    try {
+      await api(`/v1/orders/products/${product.id}`, {
+        method: "PATCH",
+        orgId,
+        body: { is_active: false },
+      });
+      await invalidate();
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : "No se pudo eliminar el producto",
+      );
+    }
+  }
+
+  async function handleCancelOrder(order: Order) {
     if (!(await confirm(`¿Cancelar el pedido ${order.number}?`))) return;
     try {
       await api(`/v1/orders/${order.id}/cancel`, { method: "POST", orgId });
@@ -59,137 +88,247 @@ export default function OrdersPage() {
     }
   }
 
+  if (selected) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={() => setSelected(null)}>
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                {selected.name}
+              </h1>
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                {selected.sku ? `${selected.sku} · ` : ""}
+                {formatMoney(selected.unit_price, selected.currency)} precio de
+                venta
+              </div>
+            </div>
+          </div>
+          <Button onClick={() => setOrderModal(true)}>
+            <Plus className="h-4 w-4" />
+            Nuevo pedido de cliente
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader title={`Pedidos de clientes — ${selected.name}`} />
+          {orders.isLoading ? (
+            <LoadingState />
+          ) : orders.isError ? (
+            <ErrorState
+              message={orders.error.message}
+              onRetry={() => orders.refetch()}
+            />
+          ) : orders.data?.length === 0 ? (
+            <EmptyState message="Este producto aún no tiene pedidos de clientes. Usa «Nuevo pedido de cliente» para registrar el primero." />
+          ) : (
+            <Table
+              headers={[
+                "Nº",
+                "Cliente",
+                "Cant",
+                "Total",
+                "Pagado",
+                "Deuda",
+                "Estado",
+                "",
+              ]}
+            >
+              {orders.data?.map((order) => {
+                const balance = Number(order.total) - Number(order.paid_amount);
+                return (
+                  <tr key={order.id}>
+                    <td className="px-5 py-3 font-medium text-primary">
+                      {order.number}
+                    </td>
+                    <td className="px-5 py-3">
+                      {order.party?.name ?? order.party_id}
+                    </td>
+                    <td className="px-5 py-3">{formatQty(order.qty)}</td>
+                    <td className="px-5 py-3 font-semibold">
+                      {formatMoney(order.total, order.currency)}
+                    </td>
+                    <td className="px-5 py-3 text-green-700 dark:text-green-400">
+                      {formatMoney(order.paid_amount, order.currency)}
+                    </td>
+                    <td className="px-5 py-3">
+                      {balance > 0 ? (
+                        <span className="font-semibold text-red-600">
+                          {formatMoney(String(balance), order.currency)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={
+                          order.status === "paid"
+                            ? "text-green-600"
+                            : order.status === "partial"
+                              ? "text-amber-600"
+                              : order.status === "cancelled"
+                                ? "text-slate-400 line-through"
+                                : "text-slate-600"
+                        }
+                      >
+                        {STATUS_LABEL[order.status]}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end gap-1">
+                        {order.status !== "paid" &&
+                          order.status !== "cancelled" && (
+                            <Button
+                              variant="secondary"
+                              className="px-3 py-1 text-xs"
+                              onClick={() => setPayingOrder(order)}
+                            >
+                              <BadgeDollarSign className="h-4 w-4" />
+                              Cobrar
+                            </Button>
+                          )}
+                        {order.status !== "cancelled" && (
+                          <Button
+                            variant="ghost"
+                            className="px-2 py-1 text-red-600"
+                            onClick={() => handleCancelOrder(order)}
+                            aria-label="Cancelar pedido"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Table>
+          )}
+        </Card>
+
+        {orderModal && (
+          <OrderModal
+            product={selected}
+            onClose={() => setOrderModal(false)}
+            onSaved={() => {
+              setOrderModal(false);
+              void invalidate();
+            }}
+          />
+        )}
+        {payingOrder && (
+          <PayOrderModal
+            order={payingOrder}
+            onClose={() => setPayingOrder(null)}
+            onSaved={() => {
+              setPayingOrder(null);
+              void invalidate();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Pedidos
         </h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setOpen(true);
+          }}
+        >
           <Plus className="h-4 w-4" />
           Añadir producto bajo pedido
         </Button>
       </div>
 
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        Configura aquí los productos que se venden solo bajo pedido. Al entrar
+        en uno, registrarás los pedidos de cada cliente.
+      </p>
+
       <Card>
-        <CardHeader title="Pedidos de clientes" />
-        {orders.isLoading ? (
+        <CardHeader title="Productos bajo pedido" />
+        {products.isLoading ? (
           <LoadingState />
-        ) : orders.isError ? (
+        ) : products.isError ? (
           <ErrorState
-            message={orders.error.message}
-            onRetry={() => orders.refetch()}
+            message={products.error.message}
+            onRetry={() => products.refetch()}
           />
-        ) : orders.data?.length === 0 ? (
-          <EmptyState message="Sin pedidos registrados. Usa «Añadir producto bajo pedido» para crear el primero." />
+        ) : products.data?.length === 0 ? (
+          <EmptyState message="Sin productos bajo pedido. Usa «Añadir producto bajo pedido» para crear el primero." />
         ) : (
-          <Table
-            headers={[
-              "Nº",
-              "Cliente",
-              "Producto",
-              "Cant",
-              "Total",
-              "Pagado",
-              "Deuda",
-              "Estado",
-              "",
-            ]}
-          >
-            {orders.data?.map((order) => {
-              const balance = Number(order.total) - Number(order.paid_amount);
-              return (
-                <tr key={order.id}>
-                  <td className="px-5 py-3 font-medium text-primary">
-                    {order.number}
-                  </td>
+          <Table headers={["Producto", "Precio", "Estado", ""]}>
+            {products.data
+              ?.filter((p) => p.is_active)
+              .map((product) => (
+                <tr key={product.id}>
                   <td className="px-5 py-3">
-                    {order.party?.name ?? order.party_id}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div>{order.variant?.name ?? order.variant_id}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {order.variant?.sku ?? ""}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">{formatQty(order.qty)}</td>
-                  <td className="px-5 py-3 font-semibold">
-                    {formatMoney(order.total, order.currency)}
-                  </td>
-                  <td className="px-5 py-3 text-green-700 dark:text-green-400">
-                    {formatMoney(order.paid_amount, order.currency)}
-                  </td>
-                  <td className="px-5 py-3">
-                    {balance > 0 ? (
-                      <span className="font-semibold text-red-600">
-                        {formatMoney(String(balance), order.currency)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">—</span>
+                    <button
+                      className="font-medium text-primary hover:underline"
+                      onClick={() => setSelected(product)}
+                    >
+                      {product.name}
+                    </button>
+                    {product.sku && (
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {product.sku}
+                      </div>
                     )}
                   </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {formatMoney(product.unit_price, product.currency)}
+                  </td>
                   <td className="px-5 py-3">
-                    <span
-                      className={
-                        order.status === "paid"
-                          ? "text-green-600"
-                          : order.status === "partial"
-                            ? "text-amber-600"
-                            : order.status === "cancelled"
-                              ? "text-slate-400 line-through"
-                              : "text-slate-600"
-                      }
-                    >
-                      {STATUS_LABEL[order.status]}
-                    </span>
+                    <span className="text-green-600">Activo</span>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end gap-1">
-                      {order.status !== "paid" &&
-                        order.status !== "cancelled" && (
-                          <Button
-                            variant="secondary"
-                            className="px-3 py-1 text-xs"
-                            onClick={() => setPayingOrder(order)}
-                          >
-                            <BadgeDollarSign className="h-4 w-4" />
-                            Cobrar
-                          </Button>
-                        )}
-                      {order.status !== "cancelled" && (
-                        <Button
-                          variant="ghost"
-                          className="px-2 py-1 text-red-600"
-                          onClick={() => handleCancel(order)}
-                          aria-label="Cancelar pedido"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1"
+                        onClick={() => {
+                          setEditing(product);
+                          setOpen(true);
+                        }}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1 text-red-600"
+                        onClick={() => handleDelete(product)}
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
-              );
-            })}
+              ))}
           </Table>
         )}
       </Card>
 
       {open && (
-        <OrderModal
+        <ProductModal
+          product={editing}
           onClose={() => setOpen(false)}
           onSaved={() => {
             setOpen(false);
-            void invalidate();
-          }}
-        />
-      )}
-      {payingOrder && (
-        <PayOrderModal
-          order={payingOrder}
-          onClose={() => setPayingOrder(null)}
-          onSaved={() => {
-            setPayingOrder(null);
+            setEditing(null);
             void invalidate();
           }}
         />
@@ -198,20 +337,115 @@ export default function OrdersPage() {
   );
 }
 
-function OrderModal({
+function ProductModal({
+  product,
   onClose,
   onSaved,
 }: {
+  product: SpecialOrderProduct | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { orgId } = useOrg();
+  const [name, setName] = useState(product?.name ?? "");
+  const [sku, setSku] = useState(product?.sku ?? "");
+  const [unitPrice, setUnitPrice] = useState(product?.unit_price ?? "");
+  const [description, setDescription] = useState(product?.description ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const body = {
+        name,
+        sku: sku || null,
+        unit_price: Number(unitPrice || 0),
+        description: description || null,
+      };
+      if (product) {
+        await api(`/v1/orders/products/${product.id}`, {
+          method: "PATCH",
+          orgId,
+          body,
+        });
+      } else {
+        await api(`/v1/orders/products`, { method: "POST", orgId, body });
+      }
+      onSaved();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "No se pudo guardar el producto",
+      );
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={
+        product ? "Editar producto bajo pedido" : "Añadir producto bajo pedido"
+      }
+      onClose={onClose}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Nombre del producto">
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="SKU (opcional)">
+          <Input value={sku} onChange={(event) => setSku(event.target.value)} />
+        </Field>
+        <Field label="Precio de venta (USD)">
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={unitPrice}
+            onChange={(event) => setUnitPrice(event.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Descripción (opcional)">
+          <Input
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </Field>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Guardando..." : "Guardar"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function OrderModal({
+  product,
+  onClose,
+  onSaved,
+}: {
+  product: SpecialOrderProduct;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { orgId } = useOrg();
   const { notify } = useFeedback();
   const [partyId, setPartyId] = useState("");
-  const [variantId, setVariantId] = useState("");
   const [qty, setQty] = useState("1");
   const [unitCost, setUnitCost] = useState("");
-  const [unitPrice, setUnitPrice] = useState("");
+  const [unitPrice, setUnitPrice] = useState(product.unit_price);
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
     "cash" | "card" | "transfer"
@@ -226,25 +460,6 @@ function OrderModal({
     queryFn: () => api<Party[]>(`/v1/parties?kind=customer`, { orgId }),
     enabled: !!orgId,
   });
-  const products = useQuery({
-    queryKey: ["catalog", orgId],
-    queryFn: () => api<Product[]>(`/v1/catalog/products`, { orgId }),
-    enabled: !!orgId,
-  });
-
-  function selectVariant(variantId: string) {
-    setVariantId(variantId);
-    const variant = products.data
-      ?.flatMap((p) => p.product_variants)
-      .find((v) => v.id === variantId);
-    if (variant) {
-      const price = variant.variant_prices.find(
-        (p) =>
-          p.currency === "USD" && (p.price_list?.code ?? "retail") === "retail",
-      );
-      if (price) setUnitPrice(String(price.amount));
-    }
-  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -255,8 +470,8 @@ function OrderModal({
         method: "POST",
         orgId,
         body: {
+          product_id: product.id,
           party_id: partyId,
-          variant_id: variantId,
           qty: Number(qty),
           unit_cost: Number(unitCost || 0),
           unit_price: Number(unitPrice),
@@ -278,7 +493,7 @@ function OrderModal({
   }
 
   return (
-    <Modal title="Añadir producto bajo pedido" onClose={onClose}>
+    <Modal title={`Nuevo pedido — ${product.name}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Cliente">
           <Select
@@ -292,22 +507,6 @@ function OrderModal({
                 {customer.name}
               </option>
             ))}
-          </Select>
-        </Field>
-        <Field label="Producto bajo pedido">
-          <Select
-            value={variantId}
-            onChange={(event) => selectVariant(event.target.value)}
-            required
-          >
-            <option value="">Seleccionar producto...</option>
-            {products.data?.map((product) =>
-              product.product_variants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {product.name} — {variant.sku}
-                </option>
-              )),
-            )}
           </Select>
         </Field>
         <div className="grid grid-cols-2 gap-4">

@@ -303,12 +303,25 @@ export type ApPayment = {
   created_at: string;
 };
 
+export type SpecialOrderProduct = {
+  id: string;
+  org_id: string;
+  name: string;
+  sku: string | null;
+  description: string | null;
+  unit_price: string;
+  currency: "VES" | "USD";
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+};
+
 export type Order = {
   id: string;
   org_id: string;
   number: string;
+  product_id: string;
   party_id: string;
-  variant_id: string;
   qty: string;
   unit_cost: string;
   unit_price: string;
@@ -326,7 +339,7 @@ export type Order = {
   created_by: string;
   created_at: string;
   party: PartyRef | null;
-  variant: VariantRef | null;
+  product: SpecialOrderProduct | null;
   payments?: OrderPayment[];
 };
 

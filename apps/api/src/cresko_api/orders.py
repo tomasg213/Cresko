@@ -12,34 +12,103 @@ from .schemas import (
     OrderReceivable,
     OrganizationContext,
     Permission,
+    SpecialOrderProductCreate,
+    SpecialOrderProductOut,
+    SpecialOrderProductUpdate,
 )
 
 router = APIRouter(prefix="/v1/orders", tags=["orders"])
 
 _ORDER_SELECT = (
     "*,party:parties(id,name,document_type,document_id),"
-    "variant:product_variants(id,name,sku)"
+    "product:special_order_products(id,name,sku,description,unit_price,currency,is_active)"
 )
 
-_ORDER_SELECT_PA = (
-    "*,party:parties(id,name,document_type,document_id),"
-    "variant:product_variants(id,name,sku),"
-    "payments:order_payments(id,amount,currency,method,created_at)"
-)
+_PRODUCT_SELECT = "id,org_id,name,sku,description,unit_price,currency,is_active,created_by,created_at"
 
+
+# =====================================================================
+# Productos bajo pedido
+# =====================================================================
+
+@router.get("/products", response_model=list[SpecialOrderProductOut])
+async def list_special_products(
+    context: Annotated[OrganizationContext, Depends(get_current_membership)],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> list[SpecialOrderProductOut]:
+    params: dict[str, str] = {
+        "select": _PRODUCT_SELECT,
+        "org_id": f"eq.{context.org_id}",
+        "order": "name.asc",
+    }
+    rows = await repository.get_json("special_order_products", params)
+    return [SpecialOrderProductOut.model_validate(row) for row in rows]
+
+
+@router.post("/products", response_model=SpecialOrderProductOut, status_code=201)
+async def create_special_product(
+    payload: SpecialOrderProductCreate,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.CATALOG_WRITE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> SpecialOrderProductOut:
+    result = await repository.rpc(
+        "cresko_create_special_product",
+        {
+            "p_org_id": context.org_id,
+            "p_name": payload.name,
+            "p_sku": payload.sku,
+            "p_description": payload.description,
+            "p_unit_price": str(payload.unit_price),
+            "p_currency": payload.currency,
+        },
+    )
+    return SpecialOrderProductOut.model_validate(result)
+
+
+@router.patch("/products/{product_id}", response_model=SpecialOrderProductOut)
+async def update_special_product(
+    product_id: str,
+    payload: SpecialOrderProductUpdate,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.CATALOG_WRITE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> SpecialOrderProductOut:
+    body = payload.model_dump(mode="json", exclude_unset=True)
+    params: dict[str, str] = {
+        "org_id": f"eq.{context.org_id}",
+        "id": f"eq.{product_id}",
+        "select": _PRODUCT_SELECT,
+    }
+    rows = await repository.patch_json("special_order_products", body, params, prefer="return=representation")
+    if not rows:
+        raise HTTPException(status_code=404, detail="Product under order not found")
+    return SpecialOrderProductOut.model_validate(rows[0])
+
+
+# =====================================================================
+# Pedidos
+# =====================================================================
 
 @router.get("", response_model=list[OrderOut])
 async def list_orders(
     context: Annotated[OrganizationContext, Depends(get_current_membership)],
     repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+    product_id: str | None = None,
     limit: int = 100,
 ) -> list[OrderOut]:
     params: dict[str, str] = {
-        "select": _ORDER_SELECT_PA,
+        "select": _ORDER_SELECT,
         "org_id": f"eq.{context.org_id}",
         "order": "created_at.desc",
         "limit": str(min(max(limit, 1), 500)),
     }
+    if product_id:
+        params["product_id"] = f"eq.{product_id}"
     rows = await repository.get_json("orders", params)
     return [OrderOut.model_validate(row) for row in rows]
 
@@ -64,7 +133,7 @@ async def get_order(
     repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
 ) -> OrderOut:
     params: dict[str, str] = {
-        "select": _ORDER_SELECT_PA,
+        "select": _ORDER_SELECT,
         "org_id": f"eq.{context.org_id}",
         "id": f"eq.{order_id}",
     }
@@ -87,8 +156,8 @@ async def create_order(
         "cresko_create_order",
         {
             "p_org_id": context.org_id,
+            "p_product_id": payload.product_id,
             "p_party_id": payload.party_id,
-            "p_variant_id": payload.variant_id,
             "p_qty": str(payload.qty),
             "p_unit_cost": str(payload.unit_cost),
             "p_unit_price": str(payload.unit_price),
