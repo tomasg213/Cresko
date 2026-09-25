@@ -327,14 +327,20 @@ export default function PosPage() {
     const paidUsd = cash + card + biopago;
     const hasCredit = paidUsd < totalUsd;
 
+    if (paidUsd > totalUsd + 0.001) {
+      setError("El pago no puede ser mayor que el total de la venta.");
+      return;
+    }
+    if (hasCredit && !creditMode) {
+      setError(
+        "El monto pagado no cubre el total de la venta. Activa «Permitir fiado» para dejar saldo a crédito.",
+      );
+      return;
+    }
     if (hasCredit && !selectedCustomerId) {
       setError(
         "Para dejar saldo a crédito (fiado) debes seleccionar un cliente registrado o crear uno nuevo.",
       );
-      return;
-    }
-    if (paidUsd > totalUsd + 0.001) {
-      setError("El pago no puede ser mayor que el total de la venta.");
       return;
     }
 
