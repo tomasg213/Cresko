@@ -641,6 +641,7 @@ class OrderOut(BaseModel):
     notes: str | None = None
     created_by: str
     created_at: str
+    delivery_status: str = "pending"
     party: PartyRef | None = None
     product: SpecialOrderProductOut | None = None
 
@@ -658,6 +659,7 @@ class OrderReceivable(BaseModel):
     paid_amount: Decimal
     balance: Decimal
     status: str
+    delivery_status: str = "pending"
     created_at: str
 
 

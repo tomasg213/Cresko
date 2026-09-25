@@ -331,6 +331,7 @@ export type Order = {
   exchange_rate: string;
   tax_rate: string;
   status: "pending" | "partial" | "paid" | "cancelled";
+  delivery_status: "pending" | "delivered";
   paid_amount: string;
   payment_method: string | null;
   expected_at: string | null;

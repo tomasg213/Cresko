@@ -174,7 +174,7 @@ async def create_order(
     return OrderOut.model_validate(result)
 
 
-@router.post("/{order_id}/pay", response_model=OrderOut)
+@router.post("/{order_id}/pay", status_code=status.HTTP_204_NO_CONTENT)
 async def pay_order(
     order_id: str,
     payload: OrderPaymentIn,
@@ -183,8 +183,8 @@ async def pay_order(
         Depends(require_permissions(Permission.FINANCE_RECEIVE)),
     ],
     repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
-) -> OrderOut:
-    result = await repository.rpc(
+) -> Response:
+    await repository.rpc(
         "cresko_pay_order",
         {
             "p_org_id": context.org_id,
@@ -193,7 +193,23 @@ async def pay_order(
             "p_method": payload.method,
         },
     )
-    return OrderOut.model_validate(result)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{order_id}/deliver", status_code=status.HTTP_204_NO_CONTENT)
+async def deliver_order(
+    order_id: str,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.SALES_CHECKOUT)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> Response:
+    await repository.rpc(
+        "cresko_deliver_order",
+        {"p_org_id": context.org_id, "p_order_id": order_id},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{order_id}/cancel", response_model=OrderOut)

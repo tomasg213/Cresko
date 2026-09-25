@@ -1,7 +1,14 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BadgeDollarSign, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeDollarSign,
+  PackageCheck,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -24,10 +31,15 @@ import type { Order, Party, Product, SpecialOrderProduct } from "@/lib/types";
 import { formatMoney, formatQty } from "@/lib/utils";
 
 const STATUS_LABEL: Record<Order["status"], string> = {
-  pending: "Pendiente",
+  pending: "Por cobrar",
   partial: "Abonado",
   paid: "Pagado",
   cancelled: "Cancelado",
+};
+
+const DELIVERY_LABEL: Record<Order["delivery_status"], string> = {
+  pending: "Por entregar",
+  delivered: "Entregado",
 };
 
 export default function OrdersPage() {
@@ -88,6 +100,29 @@ export default function OrdersPage() {
     }
   }
 
+  async function handleDeliverOrder(order: Order) {
+    if (
+      !(await confirm(
+        `¿Marcar el pedido ${order.number} como entregado?${
+          Number(order.total) - Number(order.paid_amount) > 0
+            ? " El saldo pendiente pasará a cuenta por cobrar."
+            : " Al estar pagado, el pedido se eliminará."
+        }`,
+      ))
+    )
+      return;
+    try {
+      await api(`/v1/orders/${order.id}/deliver`, { method: "POST", orgId });
+      await invalidate();
+    } catch (err) {
+      notify(
+        err instanceof Error
+          ? err.message
+          : "No se pudo marcar el pedido como entregado",
+      );
+    }
+  }
+
   if (selected) {
     return (
       <div className="space-y-4">
@@ -137,6 +172,7 @@ export default function OrdersPage() {
                 "Pagado",
                 "Deuda",
                 "Estado",
+                "Entrega",
                 "",
               ]}
             >
@@ -182,9 +218,32 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3">
+                      <span
+                        className={
+                          order.delivery_status === "delivered"
+                            ? "text-green-600"
+                            : "text-slate-600"
+                        }
+                      >
+                        {DELIVERY_LABEL[order.delivery_status]}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
                       <div className="flex justify-end gap-1">
+                        {order.status !== "cancelled" &&
+                          order.delivery_status === "pending" && (
+                            <Button
+                              variant="secondary"
+                              className="px-3 py-1 text-xs"
+                              onClick={() => handleDeliverOrder(order)}
+                            >
+                              <PackageCheck className="h-4 w-4" />
+                              Entregar
+                            </Button>
+                          )}
                         {order.status !== "paid" &&
-                          order.status !== "cancelled" && (
+                          order.status !== "cancelled" &&
+                          order.delivery_status === "pending" && (
                             <Button
                               variant="secondary"
                               className="px-3 py-1 text-xs"
@@ -194,16 +253,17 @@ export default function OrdersPage() {
                               Cobrar
                             </Button>
                           )}
-                        {order.status !== "cancelled" && (
-                          <Button
-                            variant="ghost"
-                            className="px-2 py-1 text-red-600"
-                            onClick={() => handleCancelOrder(order)}
-                            aria-label="Cancelar pedido"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        {order.status !== "cancelled" &&
+                          order.delivery_status === "pending" && (
+                            <Button
+                              variant="ghost"
+                              className="px-2 py-1 text-red-600"
+                              onClick={() => handleCancelOrder(order)}
+                              aria-label="Cancelar pedido"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                       </div>
                     </td>
                   </tr>

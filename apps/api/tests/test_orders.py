@@ -277,12 +277,37 @@ def test_pay_order_calls_rpc() -> None:
 
     response = client.post("/v1/orders/order-1/pay", json={"amount": 5, "method": "transfer"})
 
-    assert response.status_code == 200
+    assert response.status_code == 204
     function, payload = fake.captured_rpc
     assert function == "cresko_pay_order"
     assert payload["p_org_id"] == "org-a"
     assert payload["p_order_id"] == "order-1"
     assert payload["p_amount"] == "5"
+
+    app.dependency_overrides.clear()
+
+
+def test_deliver_order_requires_permission() -> None:
+    _override([])
+    client = TestClient(app)
+
+    response = client.post("/v1/orders/order-1/deliver")
+
+    assert response.status_code == 403
+
+    app.dependency_overrides.clear()
+
+
+def test_deliver_order_calls_rpc() -> None:
+    fake = _override(["sales.checkout"])
+    client = TestClient(app)
+
+    response = client.post("/v1/orders/order-1/deliver")
+
+    assert response.status_code == 204
+    function, payload = fake.captured_rpc
+    assert function == "cresko_deliver_order"
+    assert payload == {"p_org_id": "org-a", "p_order_id": "order-1"}
 
     app.dependency_overrides.clear()
 
