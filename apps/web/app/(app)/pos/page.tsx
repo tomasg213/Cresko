@@ -141,6 +141,8 @@ export default function PosPage() {
     inputRef.current?.focus();
   }, []);
 
+  const round2 = (value: number) => Math.round(value * 100) / 100;
+
   function addVariant(variant: Variant, taxable: boolean) {
     setCart((current) => {
       const existing = current.find((line) => line.variant.id === variant.id);
@@ -324,10 +326,11 @@ export default function PosPage() {
     const cash = Number(cashAmount) || 0;
     const card = Number(cardAmount) || 0;
     const biopago = Number(biopagoAmount) || 0;
-    const paidVes = cash + card + biopago;
-    const hasCredit = paidVes < total;
+    const paidVes = round2(cash + card + biopago);
+    const totalRounded = round2(total);
+    const hasCredit = paidVes < totalRounded;
 
-    if (paidVes > total + 0.01) {
+    if (paidVes > totalRounded + 0.01) {
       setError("El pago no puede ser mayor que el total de la venta.");
       return;
     }
@@ -737,11 +740,13 @@ export default function PosPage() {
                   onClick={() =>
                     setCashAmount(
                       String(
-                        Math.max(
-                          total -
-                            ((Number(cardAmount) || 0) +
-                              (Number(biopagoAmount) || 0)),
-                          0,
+                        round2(
+                          Math.max(
+                            total -
+                              ((Number(cardAmount) || 0) +
+                                (Number(biopagoAmount) || 0)),
+                            0,
+                          ),
                         ),
                       ),
                     )
@@ -767,11 +772,13 @@ export default function PosPage() {
                   onClick={() =>
                     setCardAmount(
                       String(
-                        Math.max(
-                          total -
-                            ((Number(cashAmount) || 0) +
-                              (Number(biopagoAmount) || 0)),
-                          0,
+                        round2(
+                          Math.max(
+                            total -
+                              ((Number(cashAmount) || 0) +
+                                (Number(biopagoAmount) || 0)),
+                            0,
+                          ),
                         ),
                       ),
                     )
@@ -797,11 +804,13 @@ export default function PosPage() {
                   onClick={() =>
                     setBiopagoAmount(
                       String(
-                        Math.max(
-                          total -
-                            ((Number(cashAmount) || 0) +
-                              (Number(cardAmount) || 0)),
-                          0,
+                        round2(
+                          Math.max(
+                            total -
+                              ((Number(cashAmount) || 0) +
+                                (Number(cardAmount) || 0)),
+                            0,
+                          ),
                         ),
                       ),
                     )
@@ -817,13 +826,14 @@ export default function PosPage() {
               const cash = Number(cashAmount) || 0;
               const card = Number(cardAmount) || 0;
               const biopago = Number(biopagoAmount) || 0;
-              const paid = cash + card + biopago;
-              const balance = Math.max(total - paid, 0);
+              const paid = round2(cash + card + biopago);
+              const totalRounded = round2(total);
+              const balance = Math.max(round2(totalRounded - paid), 0);
               return (
                 <div className="mb-3 space-y-1 text-xs">
                   <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-sm font-semibold">
                     <span>Total de la factura (Bs.)</span>
-                    <span>{formatMoney(String(total), "VES")}</span>
+                    <span>{formatMoney(String(totalRounded), "VES")}</span>
                   </div>
                   <div className="flex justify-between text-green-700 dark:text-green-400">
                     <span>Pagado (Bs.)</span>
