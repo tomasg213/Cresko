@@ -22,6 +22,7 @@ import {
 } from "@/lib/catalogCache";
 import { PrintDialog } from "@/components/sale-document";
 import { formatDocument } from "@/lib/documents";
+import { formatPhone } from "@/lib/phones";
 import BarcodeScannerModal from "@/components/barcode-scanner";
 import type {
   FxRate,
@@ -780,7 +781,7 @@ function NewCustomerModal({
           name,
           document_type: documentType,
           document_id: formatDocument(documentType, documentId) || null,
-          phone: phone || null,
+          phone: phone ? formatPhone(phone) : null,
           email: email || null,
         },
       });
@@ -848,7 +849,8 @@ function NewCustomerModal({
             <Field label="Teléfono">
               <Input
                 value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => setPhone(formatPhone(event.target.value))}
+                placeholder="0412-1234567"
               />
             </Field>
             <Field label="Correo">

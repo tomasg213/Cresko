@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .documents import format_document, format_rif
+from .phones import format_phone
 
 
 class Permission(StrEnum):
@@ -284,6 +285,11 @@ class PartyIn(BaseModel):
         doc_type = info.data.get("document_type", "other")
         return format_document(doc_type, value)
 
+    @field_validator("phone")
+    @classmethod
+    def _format_phone(cls, value: str | None) -> str | None:
+        return format_phone(value)
+
 
 class CheckoutIn(BaseModel):
     warehouse_id: str
@@ -308,6 +314,11 @@ class PosCustomerCreate(BaseModel):
     def _format_document(cls, value: str | None, info: Any) -> str | None:
         doc_type = info.data.get("document_type", "other")
         return format_document(doc_type, value)
+
+    @field_validator("phone")
+    @classmethod
+    def _format_phone(cls, value: str | None) -> str | None:
+        return format_phone(value)
 
 
 class InvoiceLineOut(BaseModel):
@@ -377,6 +388,11 @@ class PartyCreate(BaseModel):
     def _format_document(cls, value: str | None, info: Any) -> str | None:
         doc_type = info.data.get("document_type", "other")
         return format_document(doc_type, value)
+
+    @field_validator("phone")
+    @classmethod
+    def _format_phone(cls, value: str | None) -> str | None:
+        return format_phone(value)
 
 
 class PoLineIn(BaseModel):
@@ -564,6 +580,11 @@ class PartyUpdate(BaseModel):
     def _format_document(cls, value: str | None, info: Any) -> str | None:
         doc_type = info.data.get("document_type") or "other"
         return format_document(doc_type, value)
+
+    @field_validator("phone")
+    @classmethod
+    def _format_phone(cls, value: str | None) -> str | None:
+        return format_phone(value)
 
 
 class ArPaymentOut(BaseModel):

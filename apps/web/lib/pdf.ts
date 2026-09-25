@@ -157,7 +157,7 @@ export function invoiceEmailSubject(invoice: Invoice) {
 
 export function openWhatsApp(phone: string, message: string) {
   const digits = phone.replace(/\D/g, "");
-  const waNumber = digits.length === 11 ? digits : `58${digits}`;
+  const waNumber = digits.startsWith("58") ? digits : `58${digits}`;
   window.open(
     `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`,
     "_blank",

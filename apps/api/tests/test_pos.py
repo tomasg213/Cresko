@@ -243,6 +243,44 @@ def test_create_customer_normalizes_passport_format() -> None:
     app.dependency_overrides.clear()
 
 
+def test_create_customer_normalizes_phone_with_country_code() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["sales.checkout"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/pos/customers",
+        json={"name": "Maria", "phone": "0412-1234567"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_customer"
+    assert payload["p_phone"] == "+584121234567"
+
+    app.dependency_overrides.clear()
+
+
+def test_create_customer_keeps_existing_country_code() -> None:
+    app.dependency_overrides[get_current_membership] = lambda: _context(["sales.checkout"])
+    fake = _FakeRepository()
+    app.dependency_overrides[get_supabase_repository] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/pos/customers",
+        json={"name": "Maria", "phone": "+584121234567"},
+    )
+
+    assert response.status_code == 201
+    function, payload = fake.captured_rpc
+    assert function == "cresko_create_customer"
+    assert payload["p_phone"] == "+584121234567"
+
+    app.dependency_overrides.clear()
+
+
 def test_invoice_list_is_scoped_to_org() -> None:
     app.dependency_overrides[get_current_membership] = lambda: _context([])
     fake = _FakeRepository()

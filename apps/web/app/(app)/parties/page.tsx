@@ -20,6 +20,7 @@ import {
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import { formatDocument } from "@/lib/documents";
+import { formatPhone } from "@/lib/phones";
 import type { Party } from "@/lib/types";
 
 export default function PartiesPage() {
@@ -186,7 +187,7 @@ function PartyModal({
         name,
         document_type: documentType,
         document_id: formatDocument(documentType, documentId) || null,
-        phone: phone || null,
+        phone: phone ? formatPhone(phone) : null,
         email: email || null,
         is_customer: kind === "customer",
         is_supplier: kind === "supplier",
@@ -259,7 +260,8 @@ function PartyModal({
             <Field label="Teléfono">
               <Input
                 value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => setPhone(formatPhone(event.target.value))}
+                placeholder="0412-1234567"
               />
             </Field>
             <Field label="Correo">
