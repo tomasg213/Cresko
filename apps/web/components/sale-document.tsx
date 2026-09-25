@@ -1,13 +1,21 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Printer, X } from "lucide-react";
+import { Download, Mail, MessageCircle, Printer, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import { formatDocument } from "@/lib/documents";
+import {
+  buildEmailBody,
+  downloadInvoicePdf,
+  invoiceEmailSubject,
+  invoiceWhatsAppMessage,
+  openEmail,
+  openWhatsApp,
+} from "@/lib/pdf";
 import type { Invoice, Organization } from "@/lib/types";
 import { formatMoney, formatQty } from "@/lib/utils";
 
@@ -29,8 +37,29 @@ export function PrintDialog({
     enabled: !!orgId,
   });
 
+  const party = invoice.party;
+  const canShare = Boolean(party?.phone || party?.email);
+
   function print() {
     window.print();
+  }
+
+  function downloadPdf() {
+    downloadInvoicePdf(invoice, org.data, docType);
+  }
+
+  function sendWhatsApp() {
+    if (!party?.phone) return;
+    openWhatsApp(party.phone, invoiceWhatsAppMessage(invoice));
+  }
+
+  function sendEmail() {
+    if (!party?.email) return;
+    openEmail(
+      party.email,
+      invoiceEmailSubject(invoice),
+      buildEmailBody(invoice, docType),
+    );
   }
 
   return (
@@ -62,6 +91,42 @@ export function PrintDialog({
             </Button>
           </div>
         </div>
+
+        {canShare && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 print:hidden">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Compartir:
+            </span>
+            <Button
+              variant="secondary"
+              className="px-3 py-1.5 text-xs"
+              onClick={downloadPdf}
+            >
+              <Download className="h-4 w-4" />
+              PDF
+            </Button>
+            {party?.phone && (
+              <Button
+                variant="secondary"
+                className="px-3 py-1.5 text-xs"
+                onClick={sendWhatsApp}
+              >
+                <MessageCircle className="h-4 w-4" />
+                WhatsApp
+              </Button>
+            )}
+            {party?.email && (
+              <Button
+                variant="secondary"
+                className="px-3 py-1.5 text-xs"
+                onClick={sendEmail}
+              >
+                <Mail className="h-4 w-4" />
+                Email
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="print-area mx-auto w-[80mm] max-w-full rounded-lg border border-slate-300 bg-white p-3 text-[11px] leading-tight text-slate-900">
           {docType === "factura" ? (

@@ -16,7 +16,7 @@ from .schemas import (
 router = APIRouter(prefix="/v1/pos", tags=["pos"])
 
 _INVOICE_SELECT = (
-    "*,party:parties(id,name,document_type,document_id),"
+    "*,party:parties(id,name,document_type,document_id,phone,email),"
     "invoice_lines(*,variant:product_variants(id,name,sku))"
 )
 

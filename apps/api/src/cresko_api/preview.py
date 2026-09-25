@@ -10,9 +10,12 @@ from .config import Settings, get_settings
 
 router = APIRouter(prefix="/v1/preview", tags=["preview"])
 
+BUSINESS_TYPES = ("abasto", "licoreria", "ropa", "carniceria", "verduleria")
+
 
 class PreviewProvisionIn(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=80)
+    business: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=320)
     password: str | None = Field(default=None, min_length=8, max_length=64)
 
@@ -22,6 +25,7 @@ class PreviewProvisionOut(BaseModel):
     password: str
     org_id: str
     org_name: str
+    business: str
 
 
 def _generate_email() -> str:
@@ -48,6 +52,7 @@ async def provision_preview(
         raise HTTPException(status_code=503, detail="Preview provisioning is not configured")
 
     org_name = _slug(payload.name) if payload.name else "Comercio Demo"
+    business = payload.business if payload.business in BUSINESS_TYPES else "abasto"
     email = (payload.email or _generate_email()).strip().lower()
     password = payload.password or _generate_password()
 
@@ -115,14 +120,14 @@ async def provision_preview(
     if membership_response.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"No se pudo crear la membresía: {membership_response.text[:200]}")
 
-    # 5. Sembrar datos mock.
+    # 5. Sembrar datos mock según el tipo de negocio.
     async with httpx.AsyncClient(timeout=60.0) as client:
         seed_response = await client.post(
             f"{settings.rest_url}/rpc/cresko_setup_demo",
             headers=headers,
-            json={"p_org_id": org_id, "p_user_id": user_id},
+            json={"p_org_id": org_id, "p_user_id": user_id, "p_business": business},
         )
     if seed_response.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"No se pudo sembrar la demo: {seed_response.text[:200]}")
 
-    return PreviewProvisionOut(email=email, password=password, org_id=org_id, org_name=org_name)
+    return PreviewProvisionOut(email=email, password=password, org_id=org_id, org_name=org_name, business=business)

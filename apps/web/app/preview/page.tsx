@@ -7,16 +7,26 @@ import { Button, Card, Field, Input } from "@/components/ui";
 import { Logo } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
 
+const BUSINESS_TYPES: { value: string; label: string }[] = [
+  { value: "abasto", label: "Abasto" },
+  { value: "licoreria", label: "Licorería" },
+  { value: "ropa", label: "Tienda de ropa y zapatos" },
+  { value: "carniceria", label: "Carnicería" },
+  { value: "verduleria", label: "Verdulería" },
+];
+
 type ProvisionResult = {
   email: string;
   password: string;
   org_id: string;
   org_name: string;
+  business: string;
 };
 
 export default function PreviewPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [business, setBusiness] = useState("abasto");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +40,7 @@ export default function PreviewPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name || null }),
+          body: JSON.stringify({ name: name || null, business }),
         },
       );
       if (!response.ok) {
@@ -87,6 +97,24 @@ export default function PreviewPage() {
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Mi Comercio"
               />
+            </Field>
+            <Field label="Tipo de negocio">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {BUSINESS_TYPES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setBusiness(option.value)}
+                    className={`rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                      business === option.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </Field>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button type="submit" disabled={loading} className="w-full">

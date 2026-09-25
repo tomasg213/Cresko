@@ -326,6 +326,8 @@ class PartyRef(BaseModel):
     name: str
     document_type: str | None = None
     document_id: str | None = None
+    phone: str | None = None
+    email: str | None = None
 
 
 class InvoiceOut(BaseModel):

@@ -173,6 +173,8 @@ export type PartyRef = {
   name: string;
   document_type: string | null;
   document_id: string | null;
+  phone?: string | null;
+  email?: string | null;
 };
 
 export type Party = {
