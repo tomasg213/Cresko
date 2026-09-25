@@ -110,7 +110,7 @@ export default function PosPage() {
   });
 
   const cashClose = useQuery({
-    queryKey: ["cash-closes", orgId],
+    queryKey: ["cash-closes-current", orgId],
     queryFn: () => api<CashClose | null>(`/v1/cash-closes/current`, { orgId }),
     enabled: !!orgId,
     retry: false,
