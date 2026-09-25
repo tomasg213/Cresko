@@ -8,7 +8,7 @@ from .schemas import OrganizationContext, OrganizationOut, OrganizationUpdate, P
 
 router = APIRouter(prefix="/v1/orgs", tags=["orgs"])
 
-_SELECT = "id,name,legal_name,tax_id,default_currency,timezone"
+_SELECT = "id,name,legal_name,tax_id,default_currency,timezone,access_status"
 
 
 @router.get("", response_model=OrganizationOut)

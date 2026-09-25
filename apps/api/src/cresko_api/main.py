@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from .admin import router as admin_router
 from .backup import router as backup_router
 from .cash_closes import router as cash_closes_router
 from .catalog import router as catalog_router
@@ -50,6 +51,7 @@ app.include_router(orgs_router)
 app.include_router(orders_router)
 app.include_router(fx_router)
 app.include_router(backup_router)
+app.include_router(admin_router)
 app.include_router(cash_closes_router)
 app.include_router(preview_router)
 

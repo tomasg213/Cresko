@@ -51,6 +51,7 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
   );
   const [orgId, setOrgIdState] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
+  const [suspended, setSuspended] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadOrg = useCallback((nextOrgId: string | null) => {
@@ -59,7 +60,12 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     api<Organization>("/v1/orgs", { orgId: nextOrgId })
-      .then((org) => setOrgName(org.name))
+      .then((org) => {
+        setOrgName(org.name);
+        if (org.access_status === "suspended") {
+          setSuspended(true);
+        }
+      })
       .catch(() => setOrgName(null));
   }, []);
 
@@ -95,6 +101,16 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Si la organización está suspendida, bloquear el acceso a la app.
+  useEffect(() => {
+    if (!loading && suspended) {
+      const path = window.location.pathname;
+      if (!path.startsWith("/suspended")) {
+        window.location.href = "/suspended";
+      }
+    }
+  }, [loading, suspended]);
 
   const setOrgId = (next: string) => {
     setOrgIdState(next);

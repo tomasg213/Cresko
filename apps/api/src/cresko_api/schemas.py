@@ -105,6 +105,19 @@ class OrganizationOut(BaseModel):
     tax_id: str | None = None
     default_currency: Literal["VES", "USD"]
     timezone: str
+    access_status: str = "active"
+
+
+class AdminOrgOut(BaseModel):
+    org_id: str
+    org_name: str
+    owner_email: str
+    owner_name: str
+    created_at: str
+    member_count: int
+    access_status: str
+    payment_status: str
+    notes: str | None = None
 
 
 class OrganizationUpdate(BaseModel):
