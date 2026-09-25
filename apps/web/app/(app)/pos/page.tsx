@@ -53,6 +53,7 @@ export default function PosPage() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastScanRef = useRef<{ code: string; at: number } | null>(null);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -245,8 +246,23 @@ export default function PosPage() {
     inputRef.current?.focus();
   }
 
+  function isDuplicateScan(code: string): boolean {
+    const now = Date.now();
+    const last = lastScanRef.current;
+    if (last && last.code === code && now - last.at < 500) {
+      return true;
+    }
+    lastScanRef.current = { code, at: now };
+    return false;
+  }
+
   function handleScannedCode(code: string) {
     setScannerOpen(false);
+    if (isDuplicateScan(code)) {
+      clearQuery();
+      inputRef.current?.focus();
+      return;
+    }
     const entry = findExactByCode(code);
     if (entry) {
       handleAdd(entry);
@@ -261,6 +277,12 @@ export default function PosPage() {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!trimmedQuery) return;
+
+    if (isDuplicateScan(trimmedQuery)) {
+      clearQuery();
+      inputRef.current?.focus();
+      return;
+    }
 
     const exact = findExactVariant();
     if (exact) {

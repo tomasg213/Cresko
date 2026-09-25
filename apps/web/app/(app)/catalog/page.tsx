@@ -213,6 +213,17 @@ function ProductModal({
   const [scannerVariant, setScannerVariant] = useState<number | null>(null);
 
   function updateVariant(index: number, patch: Partial<VariantRow>) {
+    if ("barcode" in patch && typeof patch.barcode === "string") {
+      const raw = patch.barcode;
+      // Si la pistola pegó el mismo código dos veces (123456123456),
+      // conservar una sola lectura.
+      if (raw.length % 2 === 0) {
+        const half = raw.slice(0, raw.length / 2);
+        if (raw === half + half) {
+          patch = { ...patch, barcode: half };
+        }
+      }
+    }
     setVariants((current) =>
       current.map((v, i) => (i === index ? { ...v, ...patch } : v)),
     );
@@ -403,6 +414,11 @@ function ProductModal({
                           onChange={(event) =>
                             updateVariant(vi, { barcode: event.target.value })
                           }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                            }
+                          }}
                           className="pr-10"
                         />
                         <button
