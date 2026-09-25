@@ -374,13 +374,13 @@ export type CashCloseTransaction = {
   source_id: string;
   number: string;
   party_name: string | null;
-  total_usd: string;
-  paid_usd: string;
-  balance_usd: string;
-  cash_usd: string;
-  card_usd: string;
-  biopago_usd: string;
-  credit_usd: string;
+  total_ves: string;
+  paid_ves: string;
+  balance_ves: string;
+  cash_ves: string;
+  card_ves: string;
+  biopago_ves: string;
+  credit_ves: string;
 };
 
 export type CashCloseSummary = {
@@ -389,11 +389,11 @@ export type CashCloseSummary = {
   opened_at: string;
   closed_at: string;
   transactions: number;
-  total_usd: string;
-  paid_usd: string;
-  balance_usd: string;
-  cash_usd: string;
-  card_usd: string;
-  biopago_usd: string;
-  credit_usd: string;
+  total_ves: string;
+  paid_ves: string;
+  balance_ves: string;
+  cash_ves: string;
+  card_ves: string;
+  biopago_ves: string;
+  credit_ves: string;
 };

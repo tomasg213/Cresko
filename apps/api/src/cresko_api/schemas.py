@@ -721,13 +721,13 @@ class CashCloseTransactionOut(BaseModel):
     source_id: str
     number: str
     party_name: str | None = None
-    total_usd: Decimal
-    paid_usd: Decimal
-    balance_usd: Decimal
-    cash_usd: Decimal
-    card_usd: Decimal
-    biopago_usd: Decimal
-    credit_usd: Decimal
+    total_ves: Decimal
+    paid_ves: Decimal
+    balance_ves: Decimal
+    cash_ves: Decimal
+    card_ves: Decimal
+    biopago_ves: Decimal
+    credit_ves: Decimal
 
 
 class CashCloseSummary(BaseModel):
@@ -736,13 +736,13 @@ class CashCloseSummary(BaseModel):
     opened_at: str
     closed_at: str
     transactions: int
-    total_usd: Decimal
-    paid_usd: Decimal
-    balance_usd: Decimal
-    cash_usd: Decimal
-    card_usd: Decimal
-    biopago_usd: Decimal
-    credit_usd: Decimal
+    total_ves: Decimal
+    paid_ves: Decimal
+    balance_ves: Decimal
+    cash_ves: Decimal
+    card_ves: Decimal
+    biopago_ves: Decimal
+    credit_ves: Decimal
 
 
 class ApPaymentOut(BaseModel):

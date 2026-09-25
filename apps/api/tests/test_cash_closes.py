@@ -39,13 +39,13 @@ class _FakeRepository:
                 "opened_at": "2026-09-25T14:00:00Z",
                 "closed_at": "2026-09-25T18:00:00Z",
                 "transactions": 3,
-                "total_usd": "100.00",
-                "paid_usd": "90.00",
-                "balance_usd": "10.00",
-                "cash_usd": "40.00",
-                "card_usd": "30.00",
-                "biopago_usd": "20.00",
-                "credit_usd": "10.00",
+                "total_ves": "100.00",
+                "paid_ves": "90.00",
+                "balance_ves": "10.00",
+                "cash_ves": "40.00",
+                "card_ves": "30.00",
+                "biopago_ves": "20.00",
+                "credit_ves": "10.00",
             }
         return {}
 
@@ -118,7 +118,7 @@ def test_close_calls_rpc() -> None:
     function, payload = fake.captured_rpc
     assert function == "cresko_close_cash_register"
     assert payload == {"p_org_id": "org-a", "p_cash_close_id": "cc-1"}
-    assert response.json()["cash_usd"] == "40.00"
-    assert response.json()["credit_usd"] == "10.00"
+    assert response.json()["cash_ves"] == "40.00"
+    assert response.json()["credit_ves"] == "10.00"
 
     app.dependency_overrides.clear()

@@ -86,26 +86,26 @@ export default function CashClosesPage() {
           <div className="grid grid-cols-2 gap-3 px-5 py-4 sm:grid-cols-4">
             <SummaryItem
               label="Efectivo"
-              value={formatMoney(summary.cash_usd, "USD")}
+              value={formatMoney(summary.cash_ves, "VES")}
             />
             <SummaryItem
               label="Tarjeta"
-              value={formatMoney(summary.card_usd, "USD")}
+              value={formatMoney(summary.card_ves, "VES")}
             />
             <SummaryItem
               label="BioPago"
-              value={formatMoney(summary.biopago_usd, "USD")}
+              value={formatMoney(summary.biopago_ves, "VES")}
             />
             <SummaryItem
               label="Fiado (crédito)"
-              value={formatMoney(summary.credit_usd, "USD")}
+              value={formatMoney(summary.credit_ves, "VES")}
             />
           </div>
           <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 text-sm dark:border-slate-700">
             <span className="text-slate-600 dark:text-slate-300">
               Total ingresado:{" "}
               <span className="font-semibold text-slate-900 dark:text-slate-100">
-                {formatMoney(summary.paid_usd, "USD")}
+                {formatMoney(summary.paid_ves, "VES")}
               </span>
             </span>
             <span className="text-slate-500 dark:text-slate-400">
@@ -211,31 +211,31 @@ export default function CashClosesPage() {
                 const rows = transactions.data ?? [];
                 const sum = (
                   key:
-                    | "total_usd"
-                    | "paid_usd"
-                    | "balance_usd"
-                    | "cash_usd"
-                    | "card_usd"
-                    | "biopago_usd"
-                    | "credit_usd",
+                    | "total_ves"
+                    | "paid_ves"
+                    | "balance_ves"
+                    | "cash_ves"
+                    | "card_ves"
+                    | "biopago_ves"
+                    | "credit_ves",
                 ) => rows.reduce((acc, tx) => acc + Number(tx[key] ?? 0), 0);
                 return (
                   <div className="grid grid-cols-2 gap-3 px-5 py-4 sm:grid-cols-4">
                     <SummaryItem
                       label="Efectivo"
-                      value={formatMoney(String(sum("cash_usd")), "USD")}
+                      value={formatMoney(String(sum("cash_ves")), "VES")}
                     />
                     <SummaryItem
                       label="Tarjeta"
-                      value={formatMoney(String(sum("card_usd")), "USD")}
+                      value={formatMoney(String(sum("card_ves")), "VES")}
                     />
                     <SummaryItem
                       label="BioPago"
-                      value={formatMoney(String(sum("biopago_usd")), "USD")}
+                      value={formatMoney(String(sum("biopago_ves")), "VES")}
                     />
                     <SummaryItem
                       label="Fiado (crédito)"
-                      value={formatMoney(String(sum("credit_usd")), "USD")}
+                      value={formatMoney(String(sum("credit_ves")), "VES")}
                     />
                   </div>
                 );
@@ -262,19 +262,19 @@ export default function CashClosesPage() {
                     </td>
                     <td className="px-5 py-3">{tx.party_name ?? "—"}</td>
                     <td className="px-5 py-3 font-semibold">
-                      {formatMoney(tx.total_usd, "USD")}
+                      {formatMoney(tx.total_ves, "VES")}
                     </td>
                     <td className="px-5 py-3">
-                      {formatMoney(tx.cash_usd, "USD")}
+                      {formatMoney(tx.cash_ves, "VES")}
                     </td>
                     <td className="px-5 py-3">
-                      {formatMoney(tx.card_usd, "USD")}
+                      {formatMoney(tx.card_ves, "VES")}
                     </td>
                     <td className="px-5 py-3">
-                      {formatMoney(tx.biopago_usd, "USD")}
+                      {formatMoney(tx.biopago_ves, "VES")}
                     </td>
                     <td className="px-5 py-3 text-amber-700">
-                      {formatMoney(tx.credit_usd, "USD")}
+                      {formatMoney(tx.credit_ves, "VES")}
                     </td>
                   </tr>
                 ))}
