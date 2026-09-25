@@ -324,10 +324,10 @@ export default function PosPage() {
     const cash = Number(cashAmount) || 0;
     const card = Number(cardAmount) || 0;
     const biopago = Number(biopagoAmount) || 0;
-    const paidUsd = cash + card + biopago;
-    const hasCredit = paidUsd < totalUsd;
+    const paidVes = cash + card + biopago;
+    const hasCredit = paidVes < total;
 
-    if (paidUsd > totalUsd + 0.001) {
+    if (paidVes > total + 0.01) {
       setError("El pago no puede ser mayor que el total de la venta.");
       return;
     }
@@ -360,7 +360,7 @@ export default function PosPage() {
             qty: line.qty,
           })),
           payment_method: "credit",
-          paid_amount: paidUsd,
+          paid_amount: paidVes,
           payments: [
             { method: "cash", amount: cash },
             { method: "card", amount: card },
@@ -721,36 +721,96 @@ export default function PosPage() {
             )}
 
             <div className="mb-3 grid grid-cols-3 gap-2">
-              <Field label="Efectivo (USD)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cashAmount}
-                  onChange={(event) => setCashAmount(event.target.value)}
-                  placeholder="0"
-                />
-              </Field>
-              <Field label="Tarjeta (USD)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cardAmount}
-                  onChange={(event) => setCardAmount(event.target.value)}
-                  placeholder="0"
-                />
-              </Field>
-              <Field label="BioPago (USD)">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={biopagoAmount}
-                  onChange={(event) => setBiopagoAmount(event.target.value)}
-                  placeholder="0"
-                />
-              </Field>
+              <div>
+                <Field label="Efectivo (Bs.)">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cashAmount}
+                    onChange={(event) => setCashAmount(event.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCashAmount(
+                      String(
+                        Math.max(
+                          total -
+                            ((Number(cardAmount) || 0) +
+                              (Number(biopagoAmount) || 0)),
+                          0,
+                        ),
+                      ),
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Saldo
+                </button>
+              </div>
+              <div>
+                <Field label="Tarjeta (Bs.)">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cardAmount}
+                    onChange={(event) => setCardAmount(event.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCardAmount(
+                      String(
+                        Math.max(
+                          total -
+                            ((Number(cashAmount) || 0) +
+                              (Number(biopagoAmount) || 0)),
+                          0,
+                        ),
+                      ),
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Saldo
+                </button>
+              </div>
+              <div>
+                <Field label="BioPago (Bs.)">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={biopagoAmount}
+                    onChange={(event) => setBiopagoAmount(event.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setBiopagoAmount(
+                      String(
+                        Math.max(
+                          total -
+                            ((Number(cashAmount) || 0) +
+                              (Number(cardAmount) || 0)),
+                          0,
+                        ),
+                      ),
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Saldo
+                </button>
+              </div>
             </div>
 
             {(() => {
@@ -758,21 +818,21 @@ export default function PosPage() {
               const card = Number(cardAmount) || 0;
               const biopago = Number(biopagoAmount) || 0;
               const paid = cash + card + biopago;
-              const balance = Math.max(totalUsd - paid, 0);
+              const balance = Math.max(total - paid, 0);
               return (
                 <div className="mb-3 space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                    <span>Total USD</span>
-                    <span>{formatMoney(String(totalUsd), "USD")}</span>
+                  <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-sm font-semibold">
+                    <span>Total de la factura (Bs.)</span>
+                    <span>{formatMoney(String(total), "VES")}</span>
                   </div>
                   <div className="flex justify-between text-green-700 dark:text-green-400">
-                    <span>Pagado</span>
-                    <span>{formatMoney(String(paid), "USD")}</span>
+                    <span>Pagado (Bs.)</span>
+                    <span>{formatMoney(String(paid), "VES")}</span>
                   </div>
                   {creditMode && (
                     <div className="flex justify-between font-medium text-amber-700">
                       <span>Fiado (crédito)</span>
-                      <span>{formatMoney(String(balance), "USD")}</span>
+                      <span>{formatMoney(String(balance), "VES")}</span>
                     </div>
                   )}
                 </div>
