@@ -41,11 +41,11 @@ export function PhoneField({
       <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
         {label}
       </span>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Select
           value={countryCode}
           onChange={(event) => handleCountryChange(event.target.value)}
-          className="w-32 min-w-0 shrink-0 sm:w-44"
+          className="w-full sm:w-44 sm:shrink-0"
         >
           {COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
@@ -59,7 +59,7 @@ export function PhoneField({
           onChange={(event) => handlePhoneChange(event.target.value)}
           placeholder={`+${country.dial} ...`}
           required={required}
-          className="min-w-0 flex-1"
+          className="w-full"
         />
       </div>
     </div>
