@@ -400,6 +400,10 @@ export default function PosPage() {
                 <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg">
                   {results.map((entry, index) => {
                     const price = getPrice(entry.variant);
+                    const priceVes =
+                      price !== null && exchangeRate !== null
+                        ? price * exchangeRate
+                        : null;
                     return (
                       <button
                         key={entry.variant.id}
@@ -420,11 +424,22 @@ export default function PosPage() {
                             {entry.product.name} · {entry.variant.sku}
                           </div>
                         </div>
-                        <div className="text-right text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <div className="text-right">
                           {price !== null ? (
-                            formatMoney(String(price), "USD")
+                            <>
+                              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                {formatMoney(String(price), "USD")}
+                              </div>
+                              {priceVes !== null && (
+                                <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                                  {formatMoney(String(priceVes), "VES")}
+                                </div>
+                              )}
+                            </>
                           ) : (
-                            <span className="text-amber-600">Sin precio</span>
+                            <span className="text-amber-600 text-sm">
+                              Sin precio
+                            </span>
                           )}
                         </div>
                       </button>
@@ -498,8 +513,18 @@ export default function PosPage() {
                         +
                       </button>
                     </div>
-                    <div className="w-24 text-right text-sm font-semibold">
-                      {formatMoney(String(line.unitPrice * line.qty), "USD")}
+                    <div className="w-24 text-right">
+                      <div className="text-sm font-semibold">
+                        {formatMoney(String(line.unitPrice * line.qty), "USD")}
+                      </div>
+                      {exchangeRate !== null && (
+                        <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                          {formatMoney(
+                            String(line.unitPrice * line.qty * exchangeRate),
+                            "VES",
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button
                       className="text-slate-400 hover:text-red-600"

@@ -574,6 +574,79 @@ class ArPaymentOut(BaseModel):
     created_at: str
 
 
+class OrderCreate(BaseModel):
+    party_id: str
+    variant_id: str
+    qty: Decimal = Field(gt=0)
+    unit_cost: Decimal = Field(ge=0, default=Decimal(0))
+    unit_price: Decimal = Field(ge=0)
+    currency: Literal["VES", "USD"] = "USD"
+    exchange_rate: Decimal = Field(gt=0, default=Decimal(1))
+    tax_rate: Decimal = Field(ge=0, default=Decimal(0))
+    paid_amount: Decimal = Field(ge=0, default=Decimal(0))
+    payment_method: Literal["cash", "card", "transfer", "credit"] = "cash"
+    expected_at: str | None = None
+    notes: str | None = None
+
+
+class OrderPaymentIn(BaseModel):
+    amount: Decimal = Field(gt=0)
+    method: Literal["cash", "card", "transfer"] = "cash"
+
+
+class OrderOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    org_id: str
+    number: str
+    party_id: str
+    variant_id: str
+    qty: Decimal
+    unit_cost: Decimal
+    unit_price: Decimal
+    subtotal: Decimal
+    tax: Decimal
+    total: Decimal
+    currency: str
+    exchange_rate: Decimal
+    tax_rate: Decimal
+    status: str
+    paid_amount: Decimal
+    payment_method: str | None = None
+    expected_at: str | None = None
+    notes: str | None = None
+    created_by: str
+    created_at: str
+    party: PartyRef | None = None
+    variant: VariantRef | None = None
+
+
+class OrderReceivable(BaseModel):
+    order_id: str
+    number: str
+    party_id: str
+    party_name: str | None = None
+    variant_id: str
+    variant_name: str | None = None
+    variant_sku: str | None = None
+    currency: str
+    total: Decimal
+    paid_amount: Decimal
+    balance: Decimal
+    status: str
+    created_at: str
+
+
+class OrderPaymentOut(BaseModel):
+    id: str
+    order_id: str
+    amount: Decimal
+    currency: str
+    method: str
+    created_at: str
+
+
 class ApPaymentOut(BaseModel):
     id: str
     supplier_invoice_id: str

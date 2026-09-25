@@ -302,3 +302,39 @@ export type ApPayment = {
   currency: "VES" | "USD";
   created_at: string;
 };
+
+export type Order = {
+  id: string;
+  org_id: string;
+  number: string;
+  party_id: string;
+  variant_id: string;
+  qty: string;
+  unit_cost: string;
+  unit_price: string;
+  subtotal: string;
+  tax: string;
+  total: string;
+  currency: "VES" | "USD";
+  exchange_rate: string;
+  tax_rate: string;
+  status: "pending" | "partial" | "paid" | "cancelled";
+  paid_amount: string;
+  payment_method: string | null;
+  expected_at: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  party: PartyRef | null;
+  variant: VariantRef | null;
+  payments?: OrderPayment[];
+};
+
+export type OrderPayment = {
+  id: string;
+  order_id: string;
+  amount: string;
+  currency: "VES" | "USD";
+  method: string;
+  created_at: string;
+};

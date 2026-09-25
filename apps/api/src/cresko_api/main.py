@@ -9,6 +9,7 @@ from .finance import router as finance_router
 from .fx import router as fx_router
 from .inventory import router as inventory_router
 from .members import router as members_router
+from .orders import router as orders_router
 from .orgs import router as orgs_router
 from .parties import router as parties_router
 from .pos import router as pos_router
@@ -45,6 +46,7 @@ app.include_router(replenishment_router)
 app.include_router(roles_router)
 app.include_router(members_router)
 app.include_router(orgs_router)
+app.include_router(orders_router)
 app.include_router(fx_router)
 app.include_router(backup_router)
 app.include_router(preview_router)

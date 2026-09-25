@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 import { PwaRegister } from "@/components/pwa-register";
 import { Providers } from "@/components/providers";
+import { SessionIdle } from "@/components/session-idle";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -32,11 +33,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
       <body>
         <Providers>{children}</Providers>
+        <SessionIdle />
         <PwaRegister />
       </body>
     </html>
