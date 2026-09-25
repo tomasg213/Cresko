@@ -86,7 +86,7 @@ async def cash_close_transactions(
         "cash_close_id": f"eq.{cash_close_id}",
         "order": "created_at.desc",
     }
-    rows = await repository.get_json("cash_close_transactions", params)
+    rows = await repository.get_json("cash_close_transactions_view", params)
     return [CashCloseTransactionOut.model_validate(row) for row in rows]
 
 
