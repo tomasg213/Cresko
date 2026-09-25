@@ -10,7 +10,8 @@ import {
   useState,
 } from "react";
 
-import { api } from "@/lib/api";
+import { api, redirectToLogin } from "@/lib/api";
+import { createClient } from "@/lib/supabase/client";
 import { FeedbackProvider } from "@/components/feedback";
 import { ThemeProvider } from "@/components/theme-provider";
 import type { CurrentUser, Organization, Permission } from "@/lib/types";
@@ -81,6 +82,19 @@ function OrgProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => setLoading(false));
   }, [loadOrg]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        window.localStorage.removeItem(ORG_KEY);
+        window.location.href = "/login";
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const setOrgId = (next: string) => {
     setOrgIdState(next);

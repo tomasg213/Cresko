@@ -14,23 +14,64 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Logo } from "@/components/logo";
 import { useOrg } from "@/components/providers";
 import { useTheme } from "@/components/theme-provider";
+import { redirectToLogin } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import type { Permission } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const NAV: { href: string; label: string; icon: typeof Package; permission: Permission }[] = [
-  { href: "/pos", label: "Punto de venta", icon: ShoppingCart, permission: "sales.checkout" },
-  { href: "/catalog", label: "Catálogo", icon: Package, permission: "catalog.read" },
-  { href: "/inventory", label: "Inventario", icon: Archive, permission: "inventory.read" },
-  { href: "/parties", label: "Clientes y proveedores", icon: Users, permission: "catalog.read" },
-  { href: "/purchasing", label: "Compras", icon: Store, permission: "purchasing.read" },
-  { href: "/finance", label: "Finanzas", icon: CreditCard, permission: "finance.read" },
-  { href: "/replenishment", label: "Reposición", icon: BarChart3, permission: "replenishment.read" },
+const NAV: {
+  href: string;
+  label: string;
+  icon: typeof Package;
+  permission: Permission;
+}[] = [
+  {
+    href: "/pos",
+    label: "Punto de venta",
+    icon: ShoppingCart,
+    permission: "sales.checkout",
+  },
+  {
+    href: "/catalog",
+    label: "Catálogo",
+    icon: Package,
+    permission: "catalog.read",
+  },
+  {
+    href: "/inventory",
+    label: "Inventario",
+    icon: Archive,
+    permission: "inventory.read",
+  },
+  {
+    href: "/parties",
+    label: "Clientes y proveedores",
+    icon: Users,
+    permission: "catalog.read",
+  },
+  {
+    href: "/purchasing",
+    label: "Compras",
+    icon: Store,
+    permission: "purchasing.read",
+  },
+  {
+    href: "/finance",
+    label: "Finanzas",
+    icon: CreditCard,
+    permission: "finance.read",
+  },
+  {
+    href: "/replenishment",
+    label: "Reposición",
+    icon: BarChart3,
+    permission: "replenishment.read",
+  },
 ];
 
 export function Sidebar({
@@ -41,18 +82,17 @@ export function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { orgId, orgName, setOrgId, memberships, can } = useOrg();
   const { theme, toggle } = useTheme();
 
   async function signOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    await redirectToLogin(supabase);
   }
 
   const visibleNav = NAV.filter((item) => can(item.permission));
-  const showSettings = can("org.manage") || can("members.manage") || can("roles.manage");
+  const showSettings =
+    can("org.manage") || can("members.manage") || can("roles.manage");
 
   const navClass = (active: boolean) =>
     cn(
@@ -80,9 +120,13 @@ export function Sidebar({
         <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-4 dark:border-slate-700">
           <Logo className="h-8 w-8" />
           <div className="min-w-0">
-            <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Cresko</div>
+            <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Cresko
+            </div>
             {orgName && (
-              <div className="truncate text-xs text-slate-500 dark:text-slate-400">{orgName}</div>
+              <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {orgName}
+              </div>
             )}
           </div>
         </div>
@@ -120,7 +164,11 @@ export function Sidebar({
             onClick={toggle}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
             {theme === "dark" ? "Modo claro" : "Modo oscuro"}
           </button>
           {memberships.length > 1 && (
