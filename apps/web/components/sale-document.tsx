@@ -29,7 +29,7 @@ export function PrintDialog({
   onClose: () => void;
 }) {
   const { orgId } = useOrg();
-  const [docType, setDocType] = useState<DocType>("factura");
+  const [docType, setDocType] = useState<DocType>("nota");
 
   const org = useQuery({
     queryKey: ["org", orgId],

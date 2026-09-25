@@ -200,7 +200,7 @@ function ProductModal({
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [baseUnit, setBaseUnit] = useState(initial?.base_unit ?? "unit");
-  const [isTaxable, setIsTaxable] = useState(initial?.is_taxable ?? true);
+  const [isTaxable, setIsTaxable] = useState(initial?.is_taxable ?? false);
   const [variants, setVariants] = useState<VariantRow[]>(
     editing
       ? initialVariants
