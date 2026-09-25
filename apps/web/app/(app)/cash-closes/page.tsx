@@ -206,45 +206,80 @@ export default function CashClosesPage() {
           ) : transactions.data?.length === 0 ? (
             <EmptyState message="Este cuadre no tiene transacciones." />
           ) : (
-            <Table
-              headers={[
-                "Documento",
-                "Tipo",
-                "Cliente",
-                "Total",
-                "Efectivo",
-                "Tarjeta",
-                "BioPago",
-                "Fiado",
-              ]}
-            >
-              {transactions.data?.map((tx) => (
-                <tr key={tx.id}>
-                  <td className="px-5 py-3 font-medium text-primary">
-                    {tx.number}
-                  </td>
-                  <td className="px-5 py-3">
-                    {tx.source === "invoice" ? "Factura" : "Pedido"}
-                  </td>
-                  <td className="px-5 py-3">{tx.party_name ?? "—"}</td>
-                  <td className="px-5 py-3 font-semibold">
-                    {formatMoney(tx.total_usd, "USD")}
-                  </td>
-                  <td className="px-5 py-3">
-                    {formatMoney(tx.cash_usd, "USD")}
-                  </td>
-                  <td className="px-5 py-3">
-                    {formatMoney(tx.card_usd, "USD")}
-                  </td>
-                  <td className="px-5 py-3">
-                    {formatMoney(tx.biopago_usd, "USD")}
-                  </td>
-                  <td className="px-5 py-3 text-amber-700">
-                    {formatMoney(tx.credit_usd, "USD")}
-                  </td>
-                </tr>
-              ))}
-            </Table>
+            <>
+              {(() => {
+                const rows = transactions.data ?? [];
+                const sum = (
+                  key:
+                    | "total_usd"
+                    | "paid_usd"
+                    | "balance_usd"
+                    | "cash_usd"
+                    | "card_usd"
+                    | "biopago_usd"
+                    | "credit_usd",
+                ) => rows.reduce((acc, tx) => acc + Number(tx[key] ?? 0), 0);
+                return (
+                  <div className="grid grid-cols-2 gap-3 px-5 py-4 sm:grid-cols-4">
+                    <SummaryItem
+                      label="Efectivo"
+                      value={formatMoney(String(sum("cash_usd")), "USD")}
+                    />
+                    <SummaryItem
+                      label="Tarjeta"
+                      value={formatMoney(String(sum("card_usd")), "USD")}
+                    />
+                    <SummaryItem
+                      label="BioPago"
+                      value={formatMoney(String(sum("biopago_usd")), "USD")}
+                    />
+                    <SummaryItem
+                      label="Fiado (crédito)"
+                      value={formatMoney(String(sum("credit_usd")), "USD")}
+                    />
+                  </div>
+                );
+              })()}
+              <Table
+                headers={[
+                  "Documento",
+                  "Tipo",
+                  "Cliente",
+                  "Total",
+                  "Efectivo",
+                  "Tarjeta",
+                  "BioPago",
+                  "Fiado",
+                ]}
+              >
+                {transactions.data?.map((tx) => (
+                  <tr key={tx.id}>
+                    <td className="px-5 py-3 font-medium text-primary">
+                      {tx.number}
+                    </td>
+                    <td className="px-5 py-3">
+                      {tx.source === "invoice" ? "Factura" : "Pedido"}
+                    </td>
+                    <td className="px-5 py-3">{tx.party_name ?? "—"}</td>
+                    <td className="px-5 py-3 font-semibold">
+                      {formatMoney(tx.total_usd, "USD")}
+                    </td>
+                    <td className="px-5 py-3">
+                      {formatMoney(tx.cash_usd, "USD")}
+                    </td>
+                    <td className="px-5 py-3">
+                      {formatMoney(tx.card_usd, "USD")}
+                    </td>
+                    <td className="px-5 py-3">
+                      {formatMoney(tx.biopago_usd, "USD")}
+                    </td>
+                    <td className="px-5 py-3 text-amber-700">
+                      {formatMoney(tx.credit_usd, "USD")}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </>
           )}
         </Card>
       )}
