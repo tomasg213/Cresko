@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -20,6 +20,11 @@ import BarcodeScannerModal from "@/components/barcode-scanner";
 import { useFeedback } from "@/components/feedback";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
+import {
+  downloadBarcodePdf,
+  generateBarcode,
+  renderBarcodeInto,
+} from "@/lib/barcode";
 import type { Product } from "@/lib/types";
 import { formatMoney } from "@/lib/utils";
 
@@ -431,6 +436,18 @@ function ProductModal({
                           <Camera className="h-4 w-4" />
                         </button>
                       </div>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="mt-1 w-full px-3 py-1 text-xs"
+                        onClick={() =>
+                          updateVariant(vi, {
+                            barcode: generateBarcode(),
+                          })
+                        }
+                      >
+                        Generar código
+                      </Button>
                     </Field>
                   )}
                 </div>
@@ -457,6 +474,10 @@ function ProductModal({
                     </Field>
                   ))}
                 </div>
+
+                {editing && variant.barcode && (
+                  <BarcodePreview code={variant.barcode} label={name} />
+                )}
 
                 {!editing && variants.length > 1 && (
                   <Button
@@ -496,6 +517,38 @@ function ProductModal({
           onClose={() => setScannerVariant(null)}
         />
       )}
+    </div>
+  );
+}
+
+function BarcodePreview({ code, label }: { code: string; label: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      renderBarcodeInto(containerRef.current, code);
+    }
+  }, [code]);
+
+  return (
+    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Código de barras
+        </span>
+        <Button
+          type="button"
+          variant="secondary"
+          className="px-3 py-1 text-xs"
+          onClick={() => downloadBarcodePdf(code, label)}
+        >
+          Descargar PDF
+        </Button>
+      </div>
+      <div ref={containerRef} className="flex justify-center overflow-hidden" />
+      <div className="mt-1 text-center font-mono text-xs text-slate-600 dark:text-slate-300">
+        {code}
+      </div>
     </div>
   );
 }
