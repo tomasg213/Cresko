@@ -70,6 +70,7 @@ async def checkout(
             "p_paid_amount": str(payload.paid_amount),
             "p_party_id": payload.party_id,
             "p_party": payload.party.model_dump(mode="json") if payload.party else None,
+            "p_payments": [p.model_dump(mode="json") for p in payload.payments] if payload.payments else None,
         },
     )
     return InvoiceOut.model_validate(result)

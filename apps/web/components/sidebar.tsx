@@ -3,6 +3,7 @@
 import {
   Archive,
   BarChart3,
+  Calculator,
   ClipboardList,
   CreditCard,
   LogOut,
@@ -41,6 +42,12 @@ const NAV: {
     href: "/orders",
     label: "Pedidos",
     icon: ClipboardList,
+    permission: "sales.checkout",
+  },
+  {
+    href: "/cash-closes",
+    label: "Cuadres de caja",
+    icon: Calculator,
     permission: "sales.checkout",
   },
   {

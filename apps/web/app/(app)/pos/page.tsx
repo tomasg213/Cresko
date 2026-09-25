@@ -26,6 +26,7 @@ import { formatDocument } from "@/lib/documents";
 import { formatPhone } from "@/lib/phones";
 import BarcodeScannerModal from "@/components/barcode-scanner";
 import type {
+  CashClose,
   FxRate,
   Invoice,
   Party,
@@ -62,8 +63,10 @@ export default function PosPage() {
   );
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [paid, setPaid] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "credit">("cash");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cardAmount, setCardAmount] = useState("");
+  const [biopagoAmount, setBiopagoAmount] = useState("");
+  const [creditMode, setCreditMode] = useState(false);
   const [result, setResult] = useState<Invoice | null>(null);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +105,13 @@ export default function PosPage() {
   const rate = useQuery({
     queryKey: ["fx-rate", orgId],
     queryFn: () => api<FxRate>(`/v1/fx/rate`, { orgId }),
+    enabled: !!orgId,
+    retry: false,
+  });
+
+  const cashClose = useQuery({
+    queryKey: ["cash-closes", orgId],
+    queryFn: () => api<CashClose | null>(`/v1/cash-closes/current`, { orgId }),
     enabled: !!orgId,
     retry: false,
   });
@@ -310,12 +320,24 @@ export default function PosPage() {
       setError("Revisa las cantidades del carrito: deben ser mayores a cero.");
       return;
     }
-    if (paymentMethod === "credit" && !selectedCustomerId) {
+
+    const cash = Number(cashAmount) || 0;
+    const card = Number(cardAmount) || 0;
+    const biopago = Number(biopagoAmount) || 0;
+    const paidUsd = cash + card + biopago;
+    const hasCredit = paidUsd < totalUsd;
+
+    if (hasCredit && !selectedCustomerId) {
       setError(
-        "Para vender a crédito debes seleccionar un cliente registrado o crear uno nuevo.",
+        "Para dejar saldo a crédito (fiado) debes seleccionar un cliente registrado o crear uno nuevo.",
       );
       return;
     }
+    if (paidUsd > totalUsd + 0.001) {
+      setError("El pago no puede ser mayor que el total de la venta.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setResult(null);
@@ -331,9 +353,13 @@ export default function PosPage() {
             variant_id: line.variant.id,
             qty: line.qty,
           })),
-          payment_method: paymentMethod,
-          paid_amount:
-            paymentMethod === "credit" ? (paid ? Number(paid) : 0) : totalUsd,
+          payment_method: "credit",
+          paid_amount: paidUsd,
+          payments: [
+            { method: "cash", amount: cash },
+            { method: "card", amount: card },
+            { method: "biopago", amount: biopago },
+          ],
           party_id: selectedCustomerId || undefined,
         },
       });
@@ -343,9 +369,12 @@ export default function PosPage() {
       });
       setPrintInvoice(full);
       setCart([]);
-      setPaid("");
+      setCashAmount("");
+      setCardAmount("");
+      setBiopagoAmount("");
       setSelectedCustomerId("");
       setCustomerMode("current");
+      setCreditMode(false);
       queryClient.invalidateQueries({ queryKey: ["stock", orgId] });
       queryClient.invalidateQueries({ queryKey: ["ar-balances", orgId] });
     } catch (err) {
@@ -368,6 +397,39 @@ export default function PosPage() {
           Escanea un código o busca por nombre
         </div>
       </div>
+
+      {cashClose.isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950">
+          <span className="font-semibold">
+            Debes realizar el cuadre de caja del día anterior antes de vender.
+          </span>{" "}
+          Dirígete al módulo{" "}
+          <a href="/cash-closes" className="font-medium underline">
+            Cuadres de caja
+          </a>{" "}
+          para cerrarlo.
+        </div>
+      ) : !cashClose.data ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950">
+          No hay un cuadre de caja abierto para hoy. Se abrirá automáticamente
+          al realizar la primera venta.
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <span>
+            Cuadre de caja:{" "}
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {cashClose.data.number}
+            </span>
+          </span>
+          <a
+            href="/cash-closes"
+            className="font-medium text-primary hover:underline"
+          >
+            Ver cuadres de caja
+          </a>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -624,36 +686,23 @@ export default function PosPage() {
           </Card>
 
           <Card className="p-4">
-            <div className="mb-3 grid grid-cols-2 gap-2">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Pago
+              </div>
               <button
                 type="button"
-                onClick={() => setPaymentMethod("cash")}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  paymentMethod === "cash"
-                    ? "bg-primary text-white"
-                    : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800"
+                onClick={() => setCreditMode((value) => !value)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  creditMode
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                    : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 }`}
               >
-                Contado
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("credit")}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  paymentMethod === "credit"
-                    ? "bg-amber-50 dark:bg-amber-9500 text-white"
-                    : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800"
-                }`}
-              >
-                Crédito (fiado)
+                {creditMode ? "Permitir fiado" : "Permitir fiado"}
               </button>
             </div>
-            {paymentMethod === "credit" && (
-              <div className="mb-3 text-xs text-amber-700">
-                Se registrará una cuenta por cobrar por el saldo. Debes indicar
-                el cliente.
-              </div>
-            )}
+
             {exchangeRate === null ? (
               <div className="rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-700">
                 No hay tasa BCV configurada. Regístrala en Configuración para
@@ -664,45 +713,75 @@ export default function PosPage() {
                 Tasa BCV: {formatMoney(exchangeRate.toFixed(4), "VES")} por USD
               </div>
             )}
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">
-                  Subtotal
-                </span>
-                <span className="font-medium">
-                  {formatMoney(String(subtotal), "VES")}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-slate-400">
-                  IVA (16%)
-                </span>
-                <span className="font-medium">
-                  {formatMoney(String(tax), "VES")}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-base font-semibold">
-                <span>Total (Bs.)</span>
-                <span>{formatMoney(String(total), "VES")}</span>
-              </div>
+
+            <div className="mb-3 grid grid-cols-3 gap-2">
+              <Field label="Efectivo (USD)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cashAmount}
+                  onChange={(event) => setCashAmount(event.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+              <Field label="Tarjeta (USD)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cardAmount}
+                  onChange={(event) => setCardAmount(event.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+              <Field label="BioPago (USD)">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={biopagoAmount}
+                  onChange={(event) => setBiopagoAmount(event.target.value)}
+                  placeholder="0"
+                />
+              </Field>
             </div>
-            {paymentMethod === "credit" ? (
-              <Input
-                type="number"
-                step="0.01"
-                value={paid}
-                onChange={(event) => setPaid(event.target.value)}
-                placeholder="Abono inicial (USD, opcional)"
-                className="mt-3 w-full"
-              />
-            ) : (
-              <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-800 p-3 text-xs text-slate-600 dark:text-slate-400">
-                Contado: se registra el pago del total (
-                {formatMoney(String(total), "VES")})
-              </div>
+
+            {(() => {
+              const cash = Number(cashAmount) || 0;
+              const card = Number(cardAmount) || 0;
+              const biopago = Number(biopagoAmount) || 0;
+              const paid = cash + card + biopago;
+              const balance = Math.max(totalUsd - paid, 0);
+              return (
+                <div className="mb-3 space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                    <span>Total USD</span>
+                    <span>{formatMoney(String(totalUsd), "USD")}</span>
+                  </div>
+                  <div className="flex justify-between text-green-700 dark:text-green-400">
+                    <span>Pagado</span>
+                    <span>{formatMoney(String(paid), "USD")}</span>
+                  </div>
+                  {creditMode && (
+                    <div className="flex justify-between font-medium text-amber-700">
+                      <span>Fiado (crédito)</span>
+                      <span>{formatMoney(String(balance), "USD")}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {creditMode && (
+              <p className="mb-3 text-xs text-amber-700">
+                El saldo no pagado quedará como cuenta por cobrar. Debes
+                seleccionar el cliente.
+              </p>
             )}
+
             <Button
-              className="mt-3 w-full"
+              className="mt-2 w-full"
               onClick={handleCheckout}
               disabled={
                 submitting || cart.length === 0 || exchangeRate === null

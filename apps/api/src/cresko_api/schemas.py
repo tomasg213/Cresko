@@ -272,6 +272,11 @@ class CheckoutLineIn(BaseModel):
     qty: Decimal = Field(gt=0)
 
 
+class PaymentSplitIn(BaseModel):
+    method: Literal["cash", "card", "biopago", "transfer"]
+    amount: Decimal = Field(ge=0, default=Decimal(0))
+
+
 class PartyIn(BaseModel):
     name: str = Field(min_length=1, max_length=180)
     document_type: Literal["rif", "ci", "passport", "other"] = "other"
@@ -296,8 +301,9 @@ class CheckoutIn(BaseModel):
     price_list_code: Literal["retail", "wholesale"]
     tax_rate: Decimal = Field(ge=0, default=Decimal(0))
     lines: list[CheckoutLineIn] = Field(min_length=1)
-    payment_method: Literal["cash", "card", "transfer", "credit"] = "cash"
+    payment_method: Literal["cash", "card", "transfer", "credit", "biopago"] = "cash"
     paid_amount: Decimal = Field(ge=0, default=Decimal(0))
+    payments: list[PaymentSplitIn] = Field(default_factory=list)
     party_id: str | None = None
     party: PartyIn | None = None
 
@@ -695,6 +701,48 @@ class OrderPaymentOut(BaseModel):
     currency: str
     method: str
     created_at: str
+
+
+class CashCloseOut(BaseModel):
+    id: str
+    org_id: str
+    number: str
+    opened_at: str
+    closed_at: str | None = None
+    status: str
+    opened_by: str
+    closed_by: str | None = None
+
+
+class CashCloseTransactionOut(BaseModel):
+    id: str
+    cash_close_id: str
+    source: str
+    source_id: str
+    number: str
+    party_name: str | None = None
+    total_usd: Decimal
+    paid_usd: Decimal
+    balance_usd: Decimal
+    cash_usd: Decimal
+    card_usd: Decimal
+    biopago_usd: Decimal
+    credit_usd: Decimal
+
+
+class CashCloseSummary(BaseModel):
+    cash_close_id: str
+    number: str
+    opened_at: str
+    closed_at: str
+    transactions: int
+    total_usd: Decimal
+    paid_usd: Decimal
+    balance_usd: Decimal
+    cash_usd: Decimal
+    card_usd: Decimal
+    biopago_usd: Decimal
+    credit_usd: Decimal
 
 
 class ApPaymentOut(BaseModel):

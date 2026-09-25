@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .backup import router as backup_router
+from .cash_closes import router as cash_closes_router
 from .catalog import router as catalog_router
 from .finance import router as finance_router
 from .fx import router as fx_router
@@ -49,6 +50,7 @@ app.include_router(orgs_router)
 app.include_router(orders_router)
 app.include_router(fx_router)
 app.include_router(backup_router)
+app.include_router(cash_closes_router)
 app.include_router(preview_router)
 
 

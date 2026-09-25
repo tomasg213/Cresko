@@ -355,3 +355,45 @@ export type OrderPayment = {
   method: string;
   created_at: string;
 };
+
+export type CashClose = {
+  id: string;
+  org_id: string;
+  number: string;
+  opened_at: string;
+  closed_at: string | null;
+  status: "open" | "closed";
+  opened_by: string;
+  closed_by: string | null;
+};
+
+export type CashCloseTransaction = {
+  id: string;
+  cash_close_id: string;
+  source: "invoice" | "order";
+  source_id: string;
+  number: string;
+  party_name: string | null;
+  total_usd: string;
+  paid_usd: string;
+  balance_usd: string;
+  cash_usd: string;
+  card_usd: string;
+  biopago_usd: string;
+  credit_usd: string;
+};
+
+export type CashCloseSummary = {
+  cash_close_id: string;
+  number: string;
+  opened_at: string;
+  closed_at: string;
+  transactions: number;
+  total_usd: string;
+  paid_usd: string;
+  balance_usd: string;
+  cash_usd: string;
+  card_usd: string;
+  biopago_usd: string;
+  credit_usd: string;
+};
