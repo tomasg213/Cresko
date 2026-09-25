@@ -45,7 +45,7 @@ export function PhoneField({
         <Select
           value={countryCode}
           onChange={(event) => handleCountryChange(event.target.value)}
-          className="w-44 shrink-0"
+          className="w-32 min-w-0 shrink-0 sm:w-44"
         >
           {COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
@@ -59,6 +59,7 @@ export function PhoneField({
           onChange={(event) => handlePhoneChange(event.target.value)}
           placeholder={`+${country.dial} ...`}
           required={required}
+          className="min-w-0 flex-1"
         />
       </div>
     </div>
