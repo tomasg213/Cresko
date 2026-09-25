@@ -306,14 +306,13 @@ export type ApPayment = {
 export type SpecialOrderProduct = {
   id: string;
   org_id: string;
-  name: string;
-  sku: string | null;
-  description: string | null;
+  variant_id: string;
   unit_price: string;
   currency: "VES" | "USD";
   is_active: boolean;
   created_by: string;
   created_at: string;
+  variant: VariantRef | null;
 };
 
 export type Order = {

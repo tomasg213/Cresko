@@ -578,7 +578,6 @@ class OrderCreate(BaseModel):
     product_id: str
     party_id: str
     qty: Decimal = Field(gt=0)
-    unit_cost: Decimal = Field(ge=0, default=Decimal(0))
     unit_price: Decimal = Field(ge=0)
     currency: Literal["VES", "USD"] = "USD"
     exchange_rate: Decimal = Field(gt=0, default=Decimal(1))
@@ -590,17 +589,12 @@ class OrderCreate(BaseModel):
 
 
 class SpecialOrderProductCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=180)
-    sku: str | None = Field(default=None, max_length=64)
-    description: str | None = Field(default=None, max_length=500)
-    unit_price: Decimal = Field(ge=0, default=Decimal(0))
+    variant_id: str
+    unit_price: Decimal | None = Field(default=None, ge=0)
     currency: Literal["VES", "USD"] = "USD"
 
 
 class SpecialOrderProductUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=180)
-    sku: str | None = Field(default=None, max_length=64)
-    description: str | None = Field(default=None, max_length=500)
     unit_price: Decimal | None = Field(default=None, ge=0)
     currency: Literal["VES", "USD"] | None = None
     is_active: bool | None = None
@@ -609,14 +603,13 @@ class SpecialOrderProductUpdate(BaseModel):
 class SpecialOrderProductOut(BaseModel):
     id: str
     org_id: str
-    name: str
-    sku: str | None = None
-    description: str | None = None
+    variant_id: str
     unit_price: Decimal
     currency: str
     is_active: bool
     created_by: str
     created_at: str
+    variant: VariantRef | None = None
 
 
 class OrderPaymentIn(BaseModel):

@@ -21,10 +21,14 @@ router = APIRouter(prefix="/v1/orders", tags=["orders"])
 
 _ORDER_SELECT = (
     "*,party:parties(id,name,document_type,document_id),"
-    "product:special_order_products(id,name,sku,description,unit_price,currency,is_active)"
+    "product:special_order_products(id,org_id,variant_id,unit_price,currency,is_active,created_by,created_at,"
+    "variant:product_variants(id,name,sku))"
 )
 
-_PRODUCT_SELECT = "id,org_id,name,sku,description,unit_price,currency,is_active,created_by,created_at"
+_PRODUCT_SELECT = (
+    "id,org_id,variant_id,unit_price,currency,is_active,created_by,created_at,"
+    "variant:product_variants(id,name,sku)"
+)
 
 
 # =====================================================================
@@ -58,10 +62,8 @@ async def create_special_product(
         "cresko_create_special_product",
         {
             "p_org_id": context.org_id,
-            "p_name": payload.name,
-            "p_sku": payload.sku,
-            "p_description": payload.description,
-            "p_unit_price": str(payload.unit_price),
+            "p_variant_id": payload.variant_id,
+            "p_unit_price": str(payload.unit_price) if payload.unit_price is not None else None,
             "p_currency": payload.currency,
         },
     )
@@ -159,7 +161,6 @@ async def create_order(
             "p_product_id": payload.product_id,
             "p_party_id": payload.party_id,
             "p_qty": str(payload.qty),
-            "p_unit_cost": str(payload.unit_cost),
             "p_unit_price": str(payload.unit_price),
             "p_currency": payload.currency,
             "p_exchange_rate": str(payload.exchange_rate),

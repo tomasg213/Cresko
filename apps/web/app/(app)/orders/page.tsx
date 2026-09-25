@@ -20,7 +20,7 @@ import {
 import { useFeedback } from "@/components/feedback";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
-import type { Order, Party, SpecialOrderProduct } from "@/lib/types";
+import type { Order, Party, Product, SpecialOrderProduct } from "@/lib/types";
 import { formatMoney, formatQty } from "@/lib/utils";
 
 const STATUS_LABEL: Record<Order["status"], string> = {
@@ -61,7 +61,7 @@ export default function OrdersPage() {
   }
 
   async function handleDelete(product: SpecialOrderProduct) {
-    if (!(await confirm(`¿Eliminar "${product.name}"?`))) return;
+    if (!(await confirm(`¿Eliminar "${product.variant?.name ?? ""}"?`))) return;
     try {
       await api(`/v1/orders/products/${product.id}`, {
         method: "PATCH",
@@ -99,10 +99,10 @@ export default function OrdersPage() {
             </Button>
             <div>
               <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                {selected.name}
+                {selected.variant?.name ?? "Producto bajo pedido"}
               </h1>
               <div className="text-sm text-slate-500 dark:text-slate-400">
-                {selected.sku ? `${selected.sku} · ` : ""}
+                {selected.variant?.sku ? `${selected.variant.sku} · ` : ""}
                 {formatMoney(selected.unit_price, selected.currency)} precio de
                 venta
               </div>
@@ -115,7 +115,9 @@ export default function OrdersPage() {
         </div>
 
         <Card>
-          <CardHeader title={`Pedidos de clientes — ${selected.name}`} />
+          <CardHeader
+            title={`Pedidos de clientes — ${selected.variant?.name ?? ""}`}
+          />
           {orders.isLoading ? (
             <LoadingState />
           ) : orders.isError ? (
@@ -253,8 +255,8 @@ export default function OrdersPage() {
       </div>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Configura aquí los productos que se venden solo bajo pedido. Al entrar
-        en uno, registrarás los pedidos de cada cliente.
+        Configura aquí los productos del catálogo que se venden bajo pedido. Al
+        entrar en uno, registrarás los pedidos de cada cliente.
       </p>
 
       <Card>
@@ -279,11 +281,11 @@ export default function OrdersPage() {
                       className="font-medium text-primary hover:underline"
                       onClick={() => setSelected(product)}
                     >
-                      {product.name}
+                      {product.variant?.name ?? "Producto"}
                     </button>
-                    {product.sku && (
+                    {product.variant?.sku && (
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {product.sku}
+                        {product.variant.sku}
                       </div>
                     )}
                   </td>
@@ -347,12 +349,30 @@ function ProductModal({
   onSaved: () => void;
 }) {
   const { orgId } = useOrg();
-  const [name, setName] = useState(product?.name ?? "");
-  const [sku, setSku] = useState(product?.sku ?? "");
+  const [variantId, setVariantId] = useState(product?.variant_id ?? "");
   const [unitPrice, setUnitPrice] = useState(product?.unit_price ?? "");
-  const [description, setDescription] = useState(product?.description ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const catalog = useQuery({
+    queryKey: ["catalog", orgId],
+    queryFn: () => api<Product[]>(`/v1/catalog/products`, { orgId }),
+    enabled: !!orgId,
+  });
+
+  function selectVariant(variantId: string) {
+    setVariantId(variantId);
+    const variant = catalog.data
+      ?.flatMap((p) => p.product_variants)
+      .find((v) => v.id === variantId);
+    if (variant) {
+      const price = variant.variant_prices.find(
+        (p) =>
+          p.currency === "USD" && (p.price_list?.code ?? "retail") === "retail",
+      );
+      if (price) setUnitPrice(String(price.amount));
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -360,10 +380,7 @@ function ProductModal({
     setError(null);
     try {
       const body = {
-        name,
-        sku: sku || null,
         unit_price: Number(unitPrice || 0),
-        description: description || null,
       };
       if (product) {
         await api(`/v1/orders/products/${product.id}`, {
@@ -372,7 +389,11 @@ function ProductModal({
           body,
         });
       } else {
-        await api(`/v1/orders/products`, { method: "POST", orgId, body });
+        await api(`/v1/orders/products`, {
+          method: "POST",
+          orgId,
+          body: { variant_id: variantId, ...body },
+        });
       }
       onSaved();
     } catch (err) {
@@ -391,15 +412,22 @@ function ProductModal({
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Nombre del producto">
-          <Input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+        <Field label="Producto del catálogo">
+          <Select
+            value={variantId}
+            onChange={(event) => selectVariant(event.target.value)}
             required
-          />
-        </Field>
-        <Field label="SKU (opcional)">
-          <Input value={sku} onChange={(event) => setSku(event.target.value)} />
+            disabled={!!product}
+          >
+            <option value="">Seleccionar producto del catálogo...</option>
+            {catalog.data?.map((prod) =>
+              prod.product_variants.map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {prod.name} — {variant.sku}
+                </option>
+              )),
+            )}
+          </Select>
         </Field>
         <Field label="Precio de venta (USD)">
           <Input
@@ -411,12 +439,10 @@ function ProductModal({
             required
           />
         </Field>
-        <Field label="Descripción (opcional)">
-          <Input
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </Field>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          El producto debe estar registrado en el catálogo para poder venderlo
+          bajo pedido.
+        </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
@@ -444,7 +470,6 @@ function OrderModal({
   const { notify } = useFeedback();
   const [partyId, setPartyId] = useState("");
   const [qty, setQty] = useState("1");
-  const [unitCost, setUnitCost] = useState("");
   const [unitPrice, setUnitPrice] = useState(product.unit_price);
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
@@ -461,6 +486,10 @@ function OrderModal({
     enabled: !!orgId,
   });
 
+  const qtyValue = Number(qty) || 0;
+  const priceValue = Number(unitPrice) || 0;
+  const total = qtyValue * priceValue;
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
@@ -472,9 +501,8 @@ function OrderModal({
         body: {
           product_id: product.id,
           party_id: partyId,
-          qty: Number(qty),
-          unit_cost: Number(unitCost || 0),
-          unit_price: Number(unitPrice),
+          qty: qtyValue,
+          unit_price: priceValue,
           currency: "USD",
           exchange_rate: 1,
           paid_amount: Number(paidAmount || 0),
@@ -493,7 +521,10 @@ function OrderModal({
   }
 
   return (
-    <Modal title={`Nuevo pedido — ${product.name}`} onClose={onClose}>
+    <Modal
+      title={`Nuevo pedido — ${product.variant?.name ?? ""}`}
+      onClose={onClose}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Cliente">
           <Select
@@ -520,17 +551,6 @@ function OrderModal({
               required
             />
           </Field>
-          <Field label="Costo del pedido (USD)">
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={unitCost}
-              onChange={(event) => setUnitCost(event.target.value)}
-            />
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
           <Field label="Precio de venta (USD)">
             <Input
               type="number"
@@ -541,17 +561,30 @@ function OrderModal({
               required
             />
           </Field>
-          <Field label="Monto pagado (USD)">
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={paidAmount}
-              onChange={(event) => setPaidAmount(event.target.value)}
-              placeholder="0"
-            />
-          </Field>
         </div>
+        <div className="rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-500 dark:text-slate-400">
+              Costo total del pedido
+            </span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {formatMoney(String(total), "USD")}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Cantidad × precio de venta
+          </p>
+        </div>
+        <Field label="Monto pagado (USD)">
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={paidAmount}
+            onChange={(event) => setPaidAmount(event.target.value)}
+            placeholder="0"
+          />
+        </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Método de pago">
             <Select

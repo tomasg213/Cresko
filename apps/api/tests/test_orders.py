@@ -30,10 +30,8 @@ class _FakeRepository:
             return {
                 "id": "prod-1",
                 "org_id": payload["p_org_id"],
-                "name": payload["p_name"],
-                "sku": payload.get("p_sku"),
-                "description": payload.get("p_description"),
-                "unit_price": payload["p_unit_price"],
+                "variant_id": payload["p_variant_id"],
+                "unit_price": payload["p_unit_price"] or "15.00",
                 "currency": payload["p_currency"],
                 "is_active": True,
                 "created_by": "user-a",
@@ -47,7 +45,7 @@ class _FakeRepository:
                 "product_id": payload["p_product_id"],
                 "party_id": payload["p_party_id"],
                 "qty": payload["p_qty"],
-                "unit_cost": payload["p_unit_cost"],
+                "unit_cost": payload["p_unit_price"],
                 "unit_price": payload["p_unit_price"],
                 "subtotal": "10.00",
                 "tax": "1.60",
@@ -71,7 +69,7 @@ class _FakeRepository:
                 "product_id": "prod-1",
                 "party_id": "p1",
                 "qty": "2",
-                "unit_cost": "8",
+                "unit_cost": "10",
                 "unit_price": "10",
                 "subtotal": "20.00",
                 "tax": "3.20",
@@ -103,9 +101,7 @@ class _FakeRepository:
         return [{
             "id": "prod-1",
             "org_id": "org-a",
-            "name": "Camisa Personalizada",
-            "sku": "CAM-01",
-            "description": None,
+            "variant_id": "v1",
             "unit_price": "15.00",
             "currency": "USD",
             "is_active": True,
@@ -149,28 +145,39 @@ def test_create_special_product_requires_permission() -> None:
     _override([])
     client = TestClient(app)
 
-    response = client.post("/v1/orders/products", json={"name": "Camisa Personalizada"})
+    response = client.post("/v1/orders/products", json={"variant_id": "v1"})
 
     assert response.status_code == 403
 
     app.dependency_overrides.clear()
 
 
-def test_create_special_product_calls_rpc() -> None:
+def test_create_special_product_calls_rpc_with_variant() -> None:
     fake = _override(["catalog.write"])
     client = TestClient(app)
 
     response = client.post(
         "/v1/orders/products",
-        json={"name": "Camisa Personalizada", "sku": "CAM-01", "unit_price": 15, "currency": "USD"},
+        json={"variant_id": "v1", "unit_price": 15, "currency": "USD"},
     )
 
     assert response.status_code == 201
     function, payload = fake.captured_rpc
     assert function == "cresko_create_special_product"
     assert payload["p_org_id"] == "org-a"
-    assert payload["p_name"] == "Camisa Personalizada"
-    assert response.json()["name"] == "Camisa Personalizada"
+    assert payload["p_variant_id"] == "v1"
+    assert payload["p_unit_price"] == "15"
+
+    app.dependency_overrides.clear()
+
+
+def test_create_special_product_requires_variant() -> None:
+    _override(["catalog.write"])
+    client = TestClient(app)
+
+    response = client.post("/v1/orders/products", json={"unit_price": 15})
+
+    assert response.status_code == 422
 
     app.dependency_overrides.clear()
 
@@ -218,7 +225,6 @@ def test_create_order_calls_rpc_with_org() -> None:
             "product_id": "prod-1",
             "party_id": "p1",
             "qty": 2,
-            "unit_cost": 8,
             "unit_price": 10,
             "currency": "USD",
             "paid_amount": 20,
@@ -234,7 +240,9 @@ def test_create_order_calls_rpc_with_org() -> None:
     assert payload["p_product_id"] == "prod-1"
     assert payload["p_party_id"] == "p1"
     assert payload["p_qty"] == "2"
+    assert payload["p_unit_price"] == "10"
     assert payload["p_paid_amount"] == "20"
+    assert "p_unit_cost" not in payload
     assert response.json()["number"] == "PED-00000001"
 
     app.dependency_overrides.clear()
