@@ -43,7 +43,7 @@ async def list_special_products(
     params: dict[str, str] = {
         "select": _PRODUCT_SELECT,
         "org_id": f"eq.{context.org_id}",
-        "order": "name.asc",
+        "order": "variant(name).asc",
     }
     rows = await repository.get_json("special_order_products", params)
     return [SpecialOrderProductOut.model_validate(row) for row in rows]
