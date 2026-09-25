@@ -21,6 +21,70 @@ function lines(doc: jsPDF, y: number) {
   doc.line(2, y, PAGE_W - 2, y);
 }
 
+export function invoiceAsText(
+  invoice: Invoice,
+  company: Organization | undefined,
+  type: "factura" | "nota",
+): string {
+  const party = invoice.party;
+  const sep = "----------------------------------------";
+  const linesOut: string[] = [];
+
+  linesOut.push(company?.name ?? "Mi Comercio");
+  if (company?.tax_id) linesOut.push(`RIF: ${company.tax_id}`);
+  if (company?.legal_name) linesOut.push(company.legal_name);
+  linesOut.push(type === "factura" ? "FACTURA" : "NOTA DE ENTREGA");
+  linesOut.push(sep);
+  linesOut.push(`Nº: ${invoice.number}`);
+  linesOut.push(
+    `Fecha: ${new Date(invoice.created_at).toLocaleDateString("es-VE")}`,
+  );
+  linesOut.push(sep);
+  linesOut.push(`Cliente: ${party?.name ?? "Consumidor final"}`);
+  if (party?.document_id) {
+    linesOut.push(
+      formatDocument(party.document_type ?? "other", party.document_id),
+    );
+  }
+  if (party?.phone) linesOut.push(`Tel: ${party.phone}`);
+  if (party?.email) linesOut.push(`Email: ${party.email}`);
+  linesOut.push(sep);
+
+  linesOut.push("Cant  Descripción           Importe");
+  for (const line of invoice.invoice_lines) {
+    const name = line.variant?.name ?? line.variant_id;
+    const qty = formatQty(line.qty);
+    const total = formatMoney(line.line_total, "VES");
+    linesOut.push(`${qty.padEnd(5)} ${name.padEnd(22)} ${total}`);
+    linesOut.push(
+      `       ${formatMoney(line.unit_price, "VES")} c/u`.padEnd(30),
+    );
+  }
+  linesOut.push(sep);
+  linesOut.push(`Subtotal: ${formatMoney(invoice.subtotal, "VES")}`);
+  if (type === "factura") {
+    linesOut.push(
+      `IVA (${formatQty(invoice.tax_rate)}%): ${formatMoney(invoice.tax, "VES")}`,
+    );
+  }
+  linesOut.push(`TOTAL: ${formatMoney(invoice.total, "VES")}`);
+
+  if (type === "nota") {
+    linesOut.push(sep);
+    linesOut.push("Recibí conforme:");
+    linesOut.push("Firma: ______________  Cédula: ______________");
+    linesOut.push("");
+    linesOut.push("Documento no fiscal. No constituye factura.");
+  } else {
+    linesOut.push(sep);
+    linesOut.push(
+      "Factura reglamentaria sujeta a las disposiciones del SENIAT (Ley de IVA y su Reglamento).",
+    );
+  }
+
+  return linesOut.join("\n");
+}
+
 export function downloadInvoicePdf(
   invoice: Invoice,
   company: Organization | undefined,
@@ -145,10 +209,14 @@ export function downloadInvoicePdf(
   doc.save(filename);
 }
 
-export function invoiceWhatsAppMessage(invoice: Invoice) {
+export function invoiceWhatsAppMessage(
+  invoice: Invoice,
+  company: Organization | undefined,
+  type: "factura" | "nota",
+) {
   const party = invoice.party;
-  const greeting = party?.name ? `Hola ${party.name}, ` : "";
-  return `${greeting}gracias por tu compra. Tu factura ${invoice.number} por ${formatMoney(invoice.total, "VES")} está lista.`;
+  const greeting = party?.name ? `Hola ${party.name},\n` : "";
+  return `${greeting}${invoiceAsText(invoice, company, type)}`;
 }
 
 export function invoiceEmailSubject(invoice: Invoice) {
@@ -168,13 +236,15 @@ export function openEmail(email: string, subject: string, body: string) {
   window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-export function buildEmailBody(invoice: Invoice, type: "factura" | "nota") {
+export function buildEmailBody(
+  invoice: Invoice,
+  company: Organization | undefined,
+  type: "factura" | "nota",
+) {
   const party = invoice.party;
-  let body = "";
-  if (party?.name) body += `Estimado(a) ${party.name},\n\n`;
-  body += `Adjuntamos su ${type === "factura" ? "factura" : "nota de entrega"} ${invoice.number}.\n`;
-  body += `Fecha: ${new Date(invoice.created_at).toLocaleDateString("es-VE")}\n`;
-  body += `Total: ${formatMoney(invoice.total, "VES")}\n`;
-  body += `\nGracias por su compra.\n`;
-  return body;
+  const greeting = party?.name
+    ? `Estimado(a) ${party.name},\n\nLe adjuntamos su ${type === "factura" ? "factura" : "nota de entrega"}.\n\n`
+    : `Le adjuntamos su ${type === "factura" ? "factura" : "nota de entrega"}.\n\n`;
+  const body = invoiceAsText(invoice, company, type);
+  return `${greeting}${body}\n\nGracias por su compra.`;
 }

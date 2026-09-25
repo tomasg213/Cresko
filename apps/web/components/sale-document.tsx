@@ -50,7 +50,10 @@ export function PrintDialog({
 
   function sendWhatsApp() {
     if (!party?.phone) return;
-    openWhatsApp(party.phone, invoiceWhatsAppMessage(invoice));
+    openWhatsApp(
+      party.phone,
+      invoiceWhatsAppMessage(invoice, org.data, docType),
+    );
   }
 
   function sendEmail() {
@@ -58,7 +61,7 @@ export function PrintDialog({
     openEmail(
       party.email,
       invoiceEmailSubject(invoice),
-      buildEmailBody(invoice, docType),
+      buildEmailBody(invoice, org.data, docType),
     );
   }
 

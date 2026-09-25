@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useFeedback } from "@/components/feedback";
+import { PhoneField } from "@/components/phone-field";
 import {
   Button,
   Card,
@@ -257,13 +258,7 @@ function PartyModal({
             </Field>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Teléfono">
-              <Input
-                value={phone}
-                onChange={(event) => setPhone(formatPhone(event.target.value))}
-                placeholder="0412-1234567"
-              />
-            </Field>
+            <PhoneField value={phone} onChange={setPhone} />
             <Field label="Correo">
               <Input
                 type="email"

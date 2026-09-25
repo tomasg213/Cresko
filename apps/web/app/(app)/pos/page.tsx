@@ -21,6 +21,7 @@ import {
   saveCatalog,
 } from "@/lib/catalogCache";
 import { PrintDialog } from "@/components/sale-document";
+import { PhoneField } from "@/components/phone-field";
 import { formatDocument } from "@/lib/documents";
 import { formatPhone } from "@/lib/phones";
 import BarcodeScannerModal from "@/components/barcode-scanner";
@@ -846,13 +847,7 @@ function NewCustomerModal({
             </Field>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Teléfono">
-              <Input
-                value={phone}
-                onChange={(event) => setPhone(formatPhone(event.target.value))}
-                placeholder="0412-1234567"
-              />
-            </Field>
+            <PhoneField value={phone} onChange={setPhone} />
             <Field label="Correo">
               <Input
                 type="email"
