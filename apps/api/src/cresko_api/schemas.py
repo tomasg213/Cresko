@@ -121,6 +121,7 @@ class AdminOrgOut(BaseModel):
     is_demo: bool = False
     demo_expires_at: str | None = None
     time_left: str | None = None
+    protected: bool = False
 
 
 class OrganizationUpdate(BaseModel):

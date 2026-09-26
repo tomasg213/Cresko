@@ -263,8 +263,15 @@ function AdminRow({
   return (
     <tr>
       <td className="px-5 py-3">
-        <div className="font-medium text-slate-900 dark:text-slate-100">
-          {adminOrg.org_name}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-slate-900 dark:text-slate-100">
+            {adminOrg.org_name}
+          </span>
+          {adminOrg.protected && (
+            <span className="inline-flex rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-100 dark:bg-slate-700">
+              Administrador
+            </span>
+          )}
         </div>
         <div className="text-xs text-slate-500 dark:text-slate-400">
           {adminOrg.owner_name || "—"}
@@ -296,6 +303,7 @@ function AdminRow({
         <td className="px-5 py-3">
           <Select
             value={paymentStatus}
+            disabled={adminOrg.protected}
             onChange={(event) =>
               setPaymentStatus(event.target.value as AdminOrg["payment_status"])
             }
@@ -310,6 +318,7 @@ function AdminRow({
       <td className="px-5 py-3">
         <Select
           value={accessStatus}
+          disabled={adminOrg.protected}
           onChange={(event) =>
             setAccessStatus(event.target.value as AdminOrg["access_status"])
           }
@@ -332,28 +341,34 @@ function AdminRow({
         </td>
       )}
       <td className="px-5 py-3">
-        <div className="flex items-center gap-2">
-          <Input
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Nota..."
-            className="w-40"
-          />
-          <Button
-            variant="secondary"
-            className="px-3 py-1 text-xs"
-            disabled={!dirty}
-            onClick={() =>
-              onUpdate({
-                payment_status: paymentStatus,
-                access_status: accessStatus,
-                notes,
-              })
-            }
-          >
-            Guardar
-          </Button>
-        </div>
+        {adminOrg.protected ? (
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Cuenta intocable
+          </span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Nota..."
+              className="w-40"
+            />
+            <Button
+              variant="secondary"
+              className="px-3 py-1 text-xs"
+              disabled={!dirty}
+              onClick={() =>
+                onUpdate({
+                  payment_status: paymentStatus,
+                  access_status: accessStatus,
+                  notes,
+                })
+              }
+            >
+              Guardar
+            </Button>
+          </div>
+        )}
       </td>
     </tr>
   );

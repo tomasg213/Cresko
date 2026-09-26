@@ -85,6 +85,7 @@ export type AdminOrg = {
   is_demo: boolean;
   demo_expires_at: string | null;
   time_left: string | null;
+  protected: boolean;
 };
 
 export type FxRate = {
