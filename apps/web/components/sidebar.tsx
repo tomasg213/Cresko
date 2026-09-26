@@ -51,6 +51,12 @@ const NAV: {
     permission: "sales.checkout",
   },
   {
+    href: "/admin",
+    label: "Administración",
+    icon: Settings,
+    permission: "org.manage",
+  },
+  {
     href: "/catalog",
     label: "Catálogo",
     icon: Package,

@@ -72,6 +72,18 @@ export type Organization = {
   access_status: "active" | "suspended";
 };
 
+export type AdminOrg = {
+  org_id: string;
+  org_name: string;
+  owner_email: string;
+  owner_name: string;
+  created_at: string;
+  member_count: number;
+  access_status: "active" | "suspended";
+  payment_status: "paid" | "free" | "pending";
+  notes: string | null;
+};
+
 export type FxRate = {
   rate: string;
   rate_date: string;
