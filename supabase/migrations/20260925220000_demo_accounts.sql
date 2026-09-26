@@ -162,3 +162,17 @@ select cron.schedule(
   '0 * * * *',
   'select public.cresko_expire_demos()'
 );
+
+-- Backfill: las organizaciones creadas por correos demo (@cresko.preview)
+-- antes de esta migración se marcan como demo con expiración retroactiva.
+update public.organizations o
+set is_demo = true,
+    demo_expires_at = coalesce(o.demo_expires_at, o.created_at + interval '24 hours'),
+    access_status = case
+      when o.created_at + interval '24 hours' < now() then 'suspended'
+      else o.access_status
+    end
+from auth.users u
+where u.id = o.created_by
+  and u.email like '%@cresko.preview'
+  and o.is_demo = false;
