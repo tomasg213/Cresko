@@ -118,6 +118,9 @@ class AdminOrgOut(BaseModel):
     access_status: str
     payment_status: str
     notes: str | None = None
+    is_demo: bool = False
+    demo_expires_at: str | None = None
+    time_left: str | None = None
 
 
 class OrganizationUpdate(BaseModel):

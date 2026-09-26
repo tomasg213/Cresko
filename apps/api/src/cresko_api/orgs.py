@@ -19,7 +19,14 @@ async def get_organization(
     rows = await repository.get_json("organizations", {"select": _SELECT, "id": f"eq.{context.org_id}"})
     if not rows:
         raise HTTPException(status_code=404, detail="Organization not found")
-    return OrganizationOut.model_validate(rows[0])
+    org = OrganizationOut.model_validate(rows[0])
+    # Las demos vencidas cuentan como suspendidas (expiración perezosa).
+    effective = await repository.rpc(
+        "cresko_org_access_status", {"p_org_id": context.org_id}
+    )
+    if effective:
+        org.access_status = effective
+    return org
 
 
 @router.patch("", response_model=OrganizationOut)

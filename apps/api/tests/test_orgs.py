@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi.testclient import TestClient
 from helpers import context
 
@@ -19,6 +21,9 @@ class _FakeRepository:
 
     async def get_json(self, resource: str, params: dict[str, str]) -> list[dict]:
         return [self.org]
+
+    async def rpc(self, function: str, payload: dict) -> Any:
+        return None
 
     async def patch_json(
         self,

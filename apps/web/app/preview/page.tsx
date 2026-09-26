@@ -85,7 +85,7 @@ export default function PreviewPage() {
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Crea un comercio de demostración con datos de ejemplo en segundos.
-            Sin tarjeta, sin correo de confirmación.
+            Sin tarjeta, sin correo de confirmación. Expira a las 24 horas.
           </p>
         </div>
 
@@ -139,7 +139,9 @@ export default function PreviewPage() {
         </div>
 
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-          Esta es una cuenta de demostración temporal con datos ficticios.
+          Esta es una cuenta de demostración temporal: expira a las 24 horas y
+          no se convierte en cuenta permanente. Crea tu cuenta permanente desde
+          la pantalla de registro.
         </p>
       </div>
     </div>

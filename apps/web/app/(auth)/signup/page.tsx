@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,17 +19,39 @@ export default function SignupPage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-    if (data.session) {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/v1/preview/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        },
+      );
+      if (!response.ok) {
+        let detail = "No se pudo crear la cuenta.";
+        try {
+          const payload = await response.json();
+          detail = typeof payload.detail === "string" ? payload.detail : detail;
+        } catch {
+          // keep default
+        }
+        throw new Error(detail);
+      }
+
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        throw new Error(signInError.message);
+      }
       router.push("/onboarding");
-    } else {
-      setError("Revisa tu correo para confirmar la cuenta antes de continuar.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "No se pudo crear la cuenta.",
+      );
       setLoading(false);
     }
   }
@@ -40,12 +63,26 @@ export default function SignupPage() {
           <div className="flex items-center gap-3">
             <Logo className="h-10 w-10" />
             <div>
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Crear cuenta</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Comienza a usar Cresko</p>
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                Crear cuenta
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Tu cuenta permanente de Cresko
+              </p>
             </div>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+          <Field label="Nombre de tu comercio">
+            <Input
+              required
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Mi Comercio"
+            />
+          </Field>
           <Field label="Correo electrónico">
             <Input
               type="email"

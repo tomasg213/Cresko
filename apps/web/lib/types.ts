@@ -82,6 +82,9 @@ export type AdminOrg = {
   access_status: "active" | "suspended";
   payment_status: "paid" | "free" | "pending";
   notes: string | null;
+  is_demo: boolean;
+  demo_expires_at: string | null;
+  time_left: string | null;
 };
 
 export type FxRate = {
