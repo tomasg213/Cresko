@@ -35,7 +35,7 @@ import type {
   Variant,
   WarehouseRef,
 } from "@/lib/types";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, formatQty } from "@/lib/utils";
 
 type CartLine = {
   variant: Variant;
@@ -135,8 +135,20 @@ export default function PosPage() {
 
   useEffect(() => {
     const list = warehouses.data ?? [];
-    if (!warehouseId && list.length > 0) setWarehouseId(list[0]!.id);
+    if (list.length === 0) return;
+    const saved = window.localStorage.getItem("cresko.pos-warehouse");
+    if (saved && list.some((wh) => wh.id === saved)) {
+      setWarehouseId(saved);
+    } else if (!warehouseId) {
+      setWarehouseId(list[0]!.id);
+    }
   }, [warehouses.data, warehouseId]);
+
+  useEffect(() => {
+    if (warehouseId) {
+      window.localStorage.setItem("cresko.pos-warehouse", warehouseId);
+    }
+  }, [warehouseId]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -166,6 +178,14 @@ export default function PosPage() {
         p.currency === "USD" && (p.price_list?.code ?? "retail") === priceList,
     );
     return price ? Number(price.amount) : null;
+  }
+
+  function getStock(variantId: string): number | null {
+    if (!warehouseId) return null;
+    const level = (stock.data ?? []).find(
+      (row) => row.variant_id === variantId && row.warehouse_id === warehouseId,
+    );
+    return level ? Number(level.qty) : null;
   }
 
   function normalize(value: string) {
@@ -499,6 +519,7 @@ export default function PosPage() {
                       price !== null && exchangeRate !== null
                         ? price * exchangeRate
                         : null;
+                    const available = getStock(entry.variant.id);
                     return (
                       <button
                         key={entry.variant.id}
@@ -517,6 +538,17 @@ export default function PosPage() {
                           </div>
                           <div className="truncate text-xs text-slate-500 dark:text-slate-400">
                             {entry.product.name} · {entry.variant.sku}
+                          </div>
+                          <div
+                            className={`mt-0.5 text-[11px] font-medium ${
+                              available === null || available <= 0
+                                ? "text-red-600"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}
+                          >
+                            {available === null
+                              ? "Sin stock en este almacén"
+                              : `${formatQty(String(available))} disponibles`}
                           </div>
                         </div>
                         <div className="text-right">

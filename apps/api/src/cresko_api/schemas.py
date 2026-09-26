@@ -284,6 +284,26 @@ class AdjustmentIn(BaseModel):
         return value
 
 
+class WarehouseCreateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    code: str = Field(min_length=1, max_length=20)
+
+
+class TransferIn(BaseModel):
+    variant_id: str
+    from_warehouse_id: str
+    to_warehouse_id: str
+    qty: Decimal
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("qty")
+    @classmethod
+    def qty_must_be_positive(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("qty must be positive")
+        return value
+
+
 class CheckoutLineIn(BaseModel):
     variant_id: str
     qty: Decimal = Field(gt=0)

@@ -10,6 +10,8 @@ from .schemas import (
     Permission,
     StockLevelOut,
     StockMovementOut,
+    TransferIn,
+    WarehouseCreateIn,
     WarehouseRef,
 )
 
@@ -73,6 +75,48 @@ async def list_movements(
 
     rows = await repository.get_json("stock_movements", params)
     return [StockMovementOut.model_validate(row) for row in rows]
+
+
+@router.post("/warehouses", response_model=WarehouseRef, status_code=201)
+async def create_warehouse(
+    payload: WarehouseCreateIn,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.ORG_MANAGE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> WarehouseRef:
+    result = await repository.rpc(
+        "cresko_create_warehouse",
+        {
+            "p_org_id": context.org_id,
+            "p_name": payload.name,
+            "p_code": payload.code,
+        },
+    )
+    return WarehouseRef.model_validate(result)
+
+
+@router.post("/transfers", status_code=204)
+async def transfer_stock(
+    payload: TransferIn,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.INVENTORY_WRITE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> None:
+    await repository.rpc(
+        "cresko_transfer_stock",
+        {
+            "p_org_id": context.org_id,
+            "p_variant_id": payload.variant_id,
+            "p_from_warehouse_id": payload.from_warehouse_id,
+            "p_to_warehouse_id": payload.to_warehouse_id,
+            "p_qty": str(payload.qty),
+            "p_reason": payload.reason,
+        },
+    )
 
 
 @router.post("/adjustments", response_model=StockMovementOut, status_code=201)
