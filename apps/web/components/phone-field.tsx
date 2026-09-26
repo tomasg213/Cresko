@@ -45,11 +45,11 @@ export function PhoneField({
         <Select
           value={countryCode}
           onChange={(event) => handleCountryChange(event.target.value)}
-          className="w-full sm:w-44 sm:shrink-0"
+          className="w-full sm:w-24 sm:shrink-0"
         >
           {COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
-              {c.name} (+{c.dial})
+              {c.code.toUpperCase()} +{c.dial}
             </option>
           ))}
         </Select>

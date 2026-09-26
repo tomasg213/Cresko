@@ -209,7 +209,7 @@ function PartyModal({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <form
         onSubmit={handleSubmit}
-        className="mt-16 w-full max-w-md rounded-xl bg-white dark:bg-slate-800 shadow-lg"
+        className="mt-16 w-full max-w-lg rounded-xl bg-white dark:bg-slate-800 shadow-lg"
       >
         <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
