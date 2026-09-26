@@ -25,6 +25,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { Order, Party, Product, SpecialOrderProduct } from "@/lib/types";
@@ -64,6 +65,10 @@ export default function OrdersPage() {
       api<Order[]>(`/v1/orders?product_id=${selected!.id}`, { orgId }),
     enabled: !!orgId && !!selected,
   });
+
+  const activeProducts = (products.data ?? []).filter((p) => p.is_active);
+  const productsPagination = usePagination(activeProducts);
+  const ordersPagination = usePagination(orders.data ?? []);
 
   async function invalidate() {
     queryClient.invalidateQueries({
@@ -163,113 +168,117 @@ export default function OrdersPage() {
           ) : orders.data?.length === 0 ? (
             <EmptyState message="Este producto aún no tiene pedidos de clientes. Usa «Nuevo pedido de cliente» para registrar el primero." />
           ) : (
-            <Table
-              headers={[
-                "Nº",
-                "Cliente",
-                "Cant",
-                "Total",
-                "Pagado",
-                "Deuda",
-                "Estado",
-                "Entrega",
-                "",
-              ]}
-            >
-              {orders.data?.map((order) => {
-                const balance = Number(order.total) - Number(order.paid_amount);
-                return (
-                  <tr key={order.id}>
-                    <td className="px-5 py-3 font-medium text-primary">
-                      {order.number}
-                    </td>
-                    <td className="px-5 py-3">
-                      {order.party?.name ?? order.party_id}
-                    </td>
-                    <td className="px-5 py-3">{formatQty(order.qty)}</td>
-                    <td className="px-5 py-3 font-semibold">
-                      {formatMoney(order.total, order.currency)}
-                    </td>
-                    <td className="px-5 py-3 text-green-700 dark:text-green-400">
-                      {formatMoney(order.paid_amount, order.currency)}
-                    </td>
-                    <td className="px-5 py-3">
-                      {balance > 0 ? (
-                        <span className="font-semibold text-red-600">
-                          {formatMoney(String(balance), order.currency)}
+            <>
+              <Table
+                headers={[
+                  "Nº",
+                  "Cliente",
+                  "Cant",
+                  "Total",
+                  "Pagado",
+                  "Deuda",
+                  "Estado",
+                  "Entrega",
+                  "",
+                ]}
+              >
+                {ordersPagination.pageItems.map((order) => {
+                  const balance =
+                    Number(order.total) - Number(order.paid_amount);
+                  return (
+                    <tr key={order.id}>
+                      <td className="px-5 py-3 font-medium text-primary">
+                        {order.number}
+                      </td>
+                      <td className="px-5 py-3">
+                        {order.party?.name ?? order.party_id}
+                      </td>
+                      <td className="px-5 py-3">{formatQty(order.qty)}</td>
+                      <td className="px-5 py-3 font-semibold">
+                        {formatMoney(order.total, order.currency)}
+                      </td>
+                      <td className="px-5 py-3 text-green-700 dark:text-green-400">
+                        {formatMoney(order.paid_amount, order.currency)}
+                      </td>
+                      <td className="px-5 py-3">
+                        {balance > 0 ? (
+                          <span className="font-semibold text-red-600">
+                            {formatMoney(String(balance), order.currency)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={
+                            order.status === "paid"
+                              ? "text-green-600"
+                              : order.status === "partial"
+                                ? "text-amber-600"
+                                : order.status === "cancelled"
+                                  ? "text-slate-400 line-through"
+                                  : "text-slate-600"
+                          }
+                        >
+                          {STATUS_LABEL[order.status]}
                         </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={
-                          order.status === "paid"
-                            ? "text-green-600"
-                            : order.status === "partial"
-                              ? "text-amber-600"
-                              : order.status === "cancelled"
-                                ? "text-slate-400 line-through"
-                                : "text-slate-600"
-                        }
-                      >
-                        {STATUS_LABEL[order.status]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={
-                          order.delivery_status === "delivered"
-                            ? "text-green-600"
-                            : "text-slate-600"
-                        }
-                      >
-                        {DELIVERY_LABEL[order.delivery_status]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end gap-1">
-                        {order.status !== "cancelled" &&
-                          order.delivery_status === "pending" && (
-                            <Button
-                              variant="secondary"
-                              className="px-3 py-1 text-xs"
-                              onClick={() => handleDeliverOrder(order)}
-                            >
-                              <PackageCheck className="h-4 w-4" />
-                              Entregar
-                            </Button>
-                          )}
-                        {order.status !== "paid" &&
-                          order.status !== "cancelled" &&
-                          order.delivery_status === "pending" && (
-                            <Button
-                              variant="secondary"
-                              className="px-3 py-1 text-xs"
-                              onClick={() => setPayingOrder(order)}
-                            >
-                              <BadgeDollarSign className="h-4 w-4" />
-                              Cobrar
-                            </Button>
-                          )}
-                        {order.status !== "cancelled" &&
-                          order.delivery_status === "pending" && (
-                            <Button
-                              variant="ghost"
-                              className="px-2 py-1 text-red-600"
-                              onClick={() => handleCancelOrder(order)}
-                              aria-label="Cancelar pedido"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </Table>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={
+                            order.delivery_status === "delivered"
+                              ? "text-green-600"
+                              : "text-slate-600"
+                          }
+                        >
+                          {DELIVERY_LABEL[order.delivery_status]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1">
+                          {order.status !== "cancelled" &&
+                            order.delivery_status === "pending" && (
+                              <Button
+                                variant="secondary"
+                                className="px-3 py-1 text-xs"
+                                onClick={() => handleDeliverOrder(order)}
+                              >
+                                <PackageCheck className="h-4 w-4" />
+                                Entregar
+                              </Button>
+                            )}
+                          {order.status !== "paid" &&
+                            order.status !== "cancelled" &&
+                            order.delivery_status === "pending" && (
+                              <Button
+                                variant="secondary"
+                                className="px-3 py-1 text-xs"
+                                onClick={() => setPayingOrder(order)}
+                              >
+                                <BadgeDollarSign className="h-4 w-4" />
+                                Cobrar
+                              </Button>
+                            )}
+                          {order.status !== "cancelled" &&
+                            order.delivery_status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                className="px-2 py-1 text-red-600"
+                                onClick={() => handleCancelOrder(order)}
+                                aria-label="Cancelar pedido"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Table>
+              <Pagination {...ordersPagination} />
+            </>
           )}
         </Card>
 
@@ -331,10 +340,9 @@ export default function OrdersPage() {
         ) : products.data?.length === 0 ? (
           <EmptyState message="Sin productos bajo pedido. Usa «Añadir producto bajo pedido» para crear el primero." />
         ) : (
-          <Table headers={["Producto", "Precio", "Estado", ""]}>
-            {products.data
-              ?.filter((p) => p.is_active)
-              .map((product) => (
+          <>
+            <Table headers={["Producto", "Precio", "Estado", ""]}>
+              {productsPagination.pageItems.map((product) => (
                 <tr key={product.id}>
                   <td className="px-5 py-3">
                     <button
@@ -380,7 +388,9 @@ export default function OrdersPage() {
                   </td>
                 </tr>
               ))}
-          </Table>
+            </Table>
+            <Pagination {...productsPagination} />
+          </>
         )}
       </Card>
 

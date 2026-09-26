@@ -17,6 +17,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import { formatRif } from "@/lib/documents";
@@ -72,6 +73,9 @@ export default function SettingsPage() {
     queryFn: () => api<Member[]>(`/v1/members`, { orgId }),
     enabled: !!orgId && can("members.manage"),
   });
+
+  const rolesPagination = usePagination(roles.data ?? []);
+  const membersPagination = usePagination(members.data ?? []);
 
   return (
     <div className="space-y-4">
@@ -135,56 +139,59 @@ export default function SettingsPage() {
           ) : roles.data?.length === 0 ? (
             <EmptyState message="Sin roles creados." />
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {roles.data?.map((role) => (
-                <div
-                  key={role.id}
-                  className="flex items-start justify-between px-5 py-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {role.name}
-                      </span>
-                      {role.is_system && (
-                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
-                          Sistema
+            <>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {rolesPagination.pageItems.map((role) => (
+                  <div
+                    key={role.id}
+                    className="flex items-start justify-between px-5 py-4"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">
+                          {role.name}
                         </span>
+                        {role.is_system && (
+                          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            Sistema
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {role.permissions.length} permisos ·{" "}
+                        {role.permissions.slice(0, 4).join(", ")}
+                        {role.permissions.length > 4 ? ", ..." : ""}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setRoleOpen({ mode: "edit", role })}
+                      >
+                        Editar
+                      </Button>
+                      {!role.is_system && (
+                        <Button
+                          variant="danger"
+                          onClick={async () => {
+                            await api(`/v1/roles/${role.id}`, {
+                              method: "DELETE",
+                              orgId,
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["roles", orgId],
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {role.permissions.length} permisos ·{" "}
-                      {role.permissions.slice(0, 4).join(", ")}
-                      {role.permissions.length > 4 ? ", ..." : ""}
-                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setRoleOpen({ mode: "edit", role })}
-                    >
-                      Editar
-                    </Button>
-                    {!role.is_system && (
-                      <Button
-                        variant="danger"
-                        onClick={async () => {
-                          await api(`/v1/roles/${role.id}`, {
-                            method: "DELETE",
-                            orgId,
-                          });
-                          queryClient.invalidateQueries({
-                            queryKey: ["roles", orgId],
-                          });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <Pagination {...rolesPagination} />
+            </>
           )}
         </Card>
       ) : tab === "members" && can("members.manage") ? (
@@ -208,14 +215,17 @@ export default function SettingsPage() {
           ) : members.data?.length === 0 ? (
             <EmptyState message="Sin miembros." />
           ) : (
-            <Table headers={["Correo", "Rol"]}>
-              {members.data?.map((member) => (
-                <tr key={member.id}>
-                  <td className="px-5 py-3 font-medium">{member.email}</td>
-                  <td className="px-5 py-3">{member.role_name}</td>
-                </tr>
-              ))}
-            </Table>
+            <>
+              <Table headers={["Correo", "Rol"]}>
+                {membersPagination.pageItems.map((member) => (
+                  <tr key={member.id}>
+                    <td className="px-5 py-3 font-medium">{member.email}</td>
+                    <td className="px-5 py-3">{member.role_name}</td>
+                  </tr>
+                ))}
+              </Table>
+              <Pagination {...membersPagination} />
+            </>
           )}
           <PendingInvitations />
         </Card>
@@ -256,6 +266,8 @@ function PendingInvitations() {
     queryFn: () => api<Invitation[]>(`/v1/invitations`, { orgId: null }),
   });
 
+  const pagination = usePagination(pending.data ?? []);
+
   if (pending.isLoading || pending.data?.length === 0) return null;
 
   return (
@@ -263,7 +275,7 @@ function PendingInvitations() {
       <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
         Invitaciones pendientes
       </h3>
-      {pending.data?.map((invitation) => (
+      {pagination.pageItems.map((invitation) => (
         <div
           key={invitation.id}
           className="flex items-center justify-between py-2"
@@ -285,6 +297,7 @@ function PendingInvitations() {
           </Button>
         </div>
       ))}
+      <Pagination {...pagination} />
     </div>
   );
 }

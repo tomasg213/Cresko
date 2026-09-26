@@ -17,6 +17,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { CashClose, CashCloseTransaction } from "@/lib/types";
@@ -44,6 +45,9 @@ export default function CashClosesPage() {
       ),
     enabled: !!orgId && !!selected,
   });
+
+  const closesPagination = usePagination(closes.data ?? []);
+  const transactionsPagination = usePagination(transactions.data ?? []);
 
   async function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["cash-closes", orgId] });
@@ -137,48 +141,51 @@ export default function CashClosesPage() {
         ) : closes.data?.length === 0 ? (
           <EmptyState message="Sin cuadres de caja. Se crea uno automáticamente con la primera venta del día." />
         ) : (
-          <Table headers={["Nº", "Fecha", "Estado", "Acciones"]}>
-            {closes.data?.map((cashClose) => (
-              <tr key={cashClose.id}>
-                <td className="px-5 py-3 font-medium text-primary">
-                  {cashClose.number}
-                </td>
-                <td className="px-5 py-3">
-                  {new Date(cashClose.opened_at).toLocaleDateString("es-VE")}
-                </td>
-                <td className="px-5 py-3">
-                  {cashClose.status === "open" ? (
-                    <span className="text-green-600">Abierto</span>
-                  ) : (
-                    <span className="text-slate-500">Cerrado</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="secondary"
-                      className="px-3 py-1 text-xs"
-                      onClick={() => {
-                        setSelected(cashClose);
-                        setSummary(null);
-                      }}
-                    >
-                      <Calculator className="h-4 w-4" />
-                      Ver detalle
-                    </Button>
-                    {cashClose.status === "open" && (
-                      <Button
-                        className="px-3 py-1 text-xs"
-                        onClick={() => handleClose(cashClose)}
-                      >
-                        Cerrar
-                      </Button>
+          <>
+            <Table headers={["Nº", "Fecha", "Estado", "Acciones"]}>
+              {closesPagination.pageItems.map((cashClose) => (
+                <tr key={cashClose.id}>
+                  <td className="px-5 py-3 font-medium text-primary">
+                    {cashClose.number}
+                  </td>
+                  <td className="px-5 py-3">
+                    {new Date(cashClose.opened_at).toLocaleDateString("es-VE")}
+                  </td>
+                  <td className="px-5 py-3">
+                    {cashClose.status === "open" ? (
+                      <span className="text-green-600">Abierto</span>
+                    ) : (
+                      <span className="text-slate-500">Cerrado</span>
                     )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </Table>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="secondary"
+                        className="px-3 py-1 text-xs"
+                        onClick={() => {
+                          setSelected(cashClose);
+                          setSummary(null);
+                        }}
+                      >
+                        <Calculator className="h-4 w-4" />
+                        Ver detalle
+                      </Button>
+                      {cashClose.status === "open" && (
+                        <Button
+                          className="px-3 py-1 text-xs"
+                          onClick={() => handleClose(cashClose)}
+                        >
+                          Cerrar
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...closesPagination} />
+          </>
         )}
       </Card>
 
@@ -252,7 +259,7 @@ export default function CashClosesPage() {
                   "Fiado",
                 ]}
               >
-                {transactions.data?.map((tx) => (
+                {transactionsPagination.pageItems.map((tx) => (
                   <tr key={tx.id}>
                     <td className="px-5 py-3 font-medium text-primary">
                       {tx.number}
@@ -279,6 +286,7 @@ export default function CashClosesPage() {
                   </tr>
                 ))}
               </Table>
+              <Pagination {...transactionsPagination} />
             </>
           )}
         </Card>

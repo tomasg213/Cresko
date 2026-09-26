@@ -17,6 +17,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { AdminOrg } from "@/lib/types";
@@ -83,6 +84,8 @@ export default function AdminPage() {
       demos: data.filter((o) => o.is_demo).length,
     };
   }, [orgs.data]);
+
+  const pagination = usePagination(filtered);
 
   async function updateStatus(
     adminOrg: AdminOrg,
@@ -178,38 +181,41 @@ export default function AdminPage() {
               }
             />
           ) : (
-            <Table
-              headers={
-                section === "demos"
-                  ? [
-                      "Comercio",
-                      "Correo",
-                      "Creado",
-                      "Expira",
-                      "Acceso",
-                      "Pago",
-                      "Acciones",
-                    ]
-                  : [
-                      "Comercio",
-                      "Correo",
-                      "Miembros",
-                      "Creado",
-                      "Pago",
-                      "Acceso",
-                      "Acciones",
-                    ]
-              }
-            >
-              {filtered.map((adminOrg) => (
-                <AdminRow
-                  key={adminOrg.org_id}
-                  adminOrg={adminOrg}
-                  isDemo={section === "demos"}
-                  onUpdate={(patch) => updateStatus(adminOrg, patch)}
-                />
-              ))}
-            </Table>
+            <>
+              <Table
+                headers={
+                  section === "demos"
+                    ? [
+                        "Comercio",
+                        "Correo",
+                        "Creado",
+                        "Expira",
+                        "Acceso",
+                        "Pago",
+                        "Acciones",
+                      ]
+                    : [
+                        "Comercio",
+                        "Correo",
+                        "Miembros",
+                        "Creado",
+                        "Pago",
+                        "Acceso",
+                        "Acciones",
+                      ]
+                }
+              >
+                {pagination.pageItems.map((adminOrg) => (
+                  <AdminRow
+                    key={adminOrg.org_id}
+                    adminOrg={adminOrg}
+                    isDemo={section === "demos"}
+                    onUpdate={(patch) => updateStatus(adminOrg, patch)}
+                  />
+                ))}
+              </Table>
+              <Pagination {...pagination} />
+            </>
           )}
         </div>
       </Card>

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import BarcodeScannerModal from "@/components/barcode-scanner";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import {
@@ -51,6 +52,8 @@ export default function CatalogPage() {
     enabled: !!orgId,
   });
 
+  const pagination = usePagination(products.data ?? []);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -75,80 +78,85 @@ export default function CatalogPage() {
         ) : products.data?.length === 0 ? (
           <EmptyState message="Aún no hay artículos. Crea el primero." />
         ) : (
-          <Table
-            headers={["Artículo", "Modelos", "Precios", "Estado", "Acciones"]}
-          >
-            {products.data?.map((product) => (
-              <tr key={product.id}>
-                <td className="px-5 py-3 font-medium">{product.name}</td>
-                <td className="px-5 py-3">{product.product_variants.length}</td>
-                <td className="px-5 py-3">
-                  {product.product_variants
-                    .flatMap((v) => v.variant_prices)
-                    .slice(0, 2)
-                    .map((p, i) => (
-                      <div
-                        key={i}
-                        className="text-xs text-slate-600 dark:text-slate-400"
+          <>
+            <Table
+              headers={["Artículo", "Modelos", "Precios", "Estado", "Acciones"]}
+            >
+              {pagination.pageItems.map((product) => (
+                <tr key={product.id}>
+                  <td className="px-5 py-3 font-medium">{product.name}</td>
+                  <td className="px-5 py-3">
+                    {product.product_variants.length}
+                  </td>
+                  <td className="px-5 py-3">
+                    {product.product_variants
+                      .flatMap((v) => v.variant_prices)
+                      .slice(0, 2)
+                      .map((p, i) => (
+                        <div
+                          key={i}
+                          className="text-xs text-slate-600 dark:text-slate-400"
+                        >
+                          {formatMoney(p.amount, p.currency)}
+                        </div>
+                      ))}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={
+                        product.is_active ? "text-green-600" : "text-slate-400"
+                      }
+                    >
+                      {product.is_active ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setModal({ mode: "edit", product })}
                       >
-                        {formatMoney(p.amount, p.currency)}
-                      </div>
-                    ))}
-                </td>
-                <td className="px-5 py-3">
-                  <span
-                    className={
-                      product.is_active ? "text-green-600" : "text-slate-400"
-                    }
-                  >
-                    {product.is_active ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setModal({ mode: "edit", product })}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={async () => {
-                        if (
-                          !(await confirm(
-                            `¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`,
-                          ))
-                        )
-                          return;
-                        try {
-                          await api(`/v1/catalog/products/${product.id}`, {
-                            method: "DELETE",
-                            orgId,
-                          });
-                          queryClient.invalidateQueries({
-                            queryKey: ["products", orgId],
-                          });
-                          queryClient.invalidateQueries({
-                            queryKey: ["catalog", orgId],
-                          });
-                        } catch (err) {
-                          notify(
-                            err instanceof Error
-                              ? err.message
-                              : "No se pudo eliminar el artículo",
-                          );
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </Table>
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={async () => {
+                          if (
+                            !(await confirm(
+                              `¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`,
+                            ))
+                          )
+                            return;
+                          try {
+                            await api(`/v1/catalog/products/${product.id}`, {
+                              method: "DELETE",
+                              orgId,
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["products", orgId],
+                            });
+                            queryClient.invalidateQueries({
+                              queryKey: ["catalog", orgId],
+                            });
+                          } catch (err) {
+                            notify(
+                              err instanceof Error
+                                ? err.message
+                                : "No se pudo eliminar el artículo",
+                            );
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...pagination} />
+          </>
         )}
       </Card>
 

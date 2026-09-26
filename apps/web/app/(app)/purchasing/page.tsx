@@ -18,6 +18,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type { Party, Product, PurchaseOrder, WarehouseRef } from "@/lib/types";
@@ -39,6 +40,8 @@ export default function PurchasingPage() {
     queryFn: () => api<PurchaseOrder[]>(`/v1/purchasing/orders`, { orgId }),
     enabled: !!orgId,
   });
+
+  const pagination = usePagination(orders.data ?? []);
 
   async function handleDelete(order: PurchaseOrder) {
     if (
@@ -89,60 +92,63 @@ export default function PurchasingPage() {
         ) : orders.data?.length === 0 ? (
           <EmptyState message="Sin órdenes de compra." />
         ) : (
-          <Table
-            headers={["Número", "Estado", "Moneda", "Líneas", "Creada", ""]}
-          >
-            {orders.data?.map((order) => (
-              <tr key={order.id}>
-                <td className="px-5 py-3 font-medium">{order.number}</td>
-                <td className="px-5 py-3">
-                  <span
-                    className={
-                      order.status === "received"
-                        ? "text-green-600"
-                        : order.status === "partial"
-                          ? "text-amber-600"
-                          : order.status === "void"
-                            ? "text-red-600"
-                            : "text-slate-600 dark:text-slate-400"
-                    }
-                  >
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-5 py-3">{order.currency}</td>
-                <td className="px-5 py-3">{order.po_lines.length}</td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {new Date(order.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-5 py-3">
-                  {EDITABLE_STATUSES.has(order.status) && (
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        className="px-2 py-1"
-                        onClick={() => {
-                          setEditing(order);
-                          setOpen(true);
-                        }}
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="px-2 py-1 text-red-600"
-                        onClick={() => handleDelete(order)}
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Table>
+          <>
+            <Table
+              headers={["Número", "Estado", "Moneda", "Líneas", "Creada", ""]}
+            >
+              {pagination.pageItems.map((order) => (
+                <tr key={order.id}>
+                  <td className="px-5 py-3 font-medium">{order.number}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={
+                        order.status === "received"
+                          ? "text-green-600"
+                          : order.status === "partial"
+                            ? "text-amber-600"
+                            : order.status === "void"
+                              ? "text-red-600"
+                              : "text-slate-600 dark:text-slate-400"
+                      }
+                    >
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">{order.currency}</td>
+                  <td className="px-5 py-3">{order.po_lines.length}</td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-3">
+                    {EDITABLE_STATUSES.has(order.status) && (
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          className="px-2 py-1"
+                          onClick={() => {
+                            setEditing(order);
+                            setOpen(true);
+                          }}
+                          aria-label="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="px-2 py-1 text-red-600"
+                          onClick={() => handleDelete(order)}
+                          aria-label="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...pagination} />
+          </>
         )}
       </Card>
 

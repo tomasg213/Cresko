@@ -18,6 +18,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type {
@@ -49,6 +50,9 @@ export default function ReplenishmentPage() {
       api<ReplenishmentConfig[]>(`/v1/replenishment/configs`, { orgId }),
     enabled: !!orgId,
   });
+
+  const neededPagination = usePagination(needed.data ?? []);
+  const configsPagination = usePagination(configs.data ?? []);
 
   async function handleDelete(config: ReplenishmentConfig) {
     if (
@@ -96,35 +100,38 @@ export default function ReplenishmentPage() {
         ) : needed.data?.length === 0 ? (
           <EmptyState message="No hay artículos bajo el mínimo. Configura niveles para activar la reposición." />
         ) : (
-          <Table
-            headers={[
-              "Producto",
-              "SKU",
-              "Almacén",
-              "Existencia",
-              "Pedido",
-              "Mín",
-              "Máx",
-              "Sugerido",
-            ]}
-          >
-            {needed.data?.map((item) => (
-              <tr key={`${item.variant_id}-${item.warehouse_id}`}>
-                <td className="px-5 py-3 font-medium">{item.variant_name}</td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {item.variant_sku}
-                </td>
-                <td className="px-5 py-3">{item.warehouse_name}</td>
-                <td className="px-5 py-3">{formatQty(item.on_hand)}</td>
-                <td className="px-5 py-3">{formatQty(item.on_order)}</td>
-                <td className="px-5 py-3">{formatQty(item.min_qty)}</td>
-                <td className="px-5 py-3">{formatQty(item.max_qty)}</td>
-                <td className="px-5 py-3 font-semibold text-primary">
-                  {formatQty(item.suggested_qty)}
-                </td>
-              </tr>
-            ))}
-          </Table>
+          <>
+            <Table
+              headers={[
+                "Producto",
+                "SKU",
+                "Almacén",
+                "Existencia",
+                "Pedido",
+                "Mín",
+                "Máx",
+                "Sugerido",
+              ]}
+            >
+              {neededPagination.pageItems.map((item) => (
+                <tr key={`${item.variant_id}-${item.warehouse_id}`}>
+                  <td className="px-5 py-3 font-medium">{item.variant_name}</td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {item.variant_sku}
+                  </td>
+                  <td className="px-5 py-3">{item.warehouse_name}</td>
+                  <td className="px-5 py-3">{formatQty(item.on_hand)}</td>
+                  <td className="px-5 py-3">{formatQty(item.on_order)}</td>
+                  <td className="px-5 py-3">{formatQty(item.min_qty)}</td>
+                  <td className="px-5 py-3">{formatQty(item.max_qty)}</td>
+                  <td className="px-5 py-3 font-semibold text-primary">
+                    {formatQty(item.suggested_qty)}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...neededPagination} />
+          </>
         )}
       </Card>
 
@@ -140,65 +147,70 @@ export default function ReplenishmentPage() {
         ) : configs.data?.length === 0 ? (
           <EmptyState message="Sin configuraciones. Agrega una para activar la reposición." />
         ) : (
-          <Table
-            headers={[
-              "Modelo",
-              "SKU",
-              "Almacén",
-              "Mín",
-              "Máx",
-              "Múltiplo",
-              "Estado",
-              "",
-            ]}
-          >
-            {configs.data?.map((config) => (
-              <tr key={config.id}>
-                <td className="px-5 py-3 font-medium">
-                  {config.variant?.name}
-                </td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {config.variant?.sku}
-                </td>
-                <td className="px-5 py-3">{config.warehouse?.name}</td>
-                <td className="px-5 py-3">{formatQty(config.min_qty)}</td>
-                <td className="px-5 py-3">{formatQty(config.max_qty)}</td>
-                <td className="px-5 py-3">{formatQty(config.pack_multiple)}</td>
-                <td className="px-5 py-3">
-                  <span
-                    className={
-                      config.is_active ? "text-green-600" : "text-slate-400"
-                    }
-                  >
-                    {config.is_active ? "Activa" : "Inactiva"}
-                  </span>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      className="px-2 py-1"
-                      onClick={() => {
-                        setEditing(config);
-                        setOpen(true);
-                      }}
-                      aria-label="Editar"
+          <>
+            <Table
+              headers={[
+                "Modelo",
+                "SKU",
+                "Almacén",
+                "Mín",
+                "Máx",
+                "Múltiplo",
+                "Estado",
+                "",
+              ]}
+            >
+              {configsPagination.pageItems.map((config) => (
+                <tr key={config.id}>
+                  <td className="px-5 py-3 font-medium">
+                    {config.variant?.name}
+                  </td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {config.variant?.sku}
+                  </td>
+                  <td className="px-5 py-3">{config.warehouse?.name}</td>
+                  <td className="px-5 py-3">{formatQty(config.min_qty)}</td>
+                  <td className="px-5 py-3">{formatQty(config.max_qty)}</td>
+                  <td className="px-5 py-3">
+                    {formatQty(config.pack_multiple)}
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={
+                        config.is_active ? "text-green-600" : "text-slate-400"
+                      }
                     >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="px-2 py-1 text-red-600"
-                      onClick={() => handleDelete(config)}
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </Table>
+                      {config.is_active ? "Activa" : "Inactiva"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1"
+                        onClick={() => {
+                          setEditing(config);
+                          setOpen(true);
+                        }}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1 text-red-600"
+                        onClick={() => handleDelete(config)}
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...configsPagination} />
+          </>
         )}
       </Card>
 

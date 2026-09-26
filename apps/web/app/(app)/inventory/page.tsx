@@ -17,6 +17,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type {
@@ -26,54 +27,6 @@ import type {
   WarehouseRef,
 } from "@/lib/types";
 import { formatQty } from "@/lib/utils";
-
-const PAGE_SIZE = 12;
-
-function usePagination<T>(items: T[]) {
-  const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * PAGE_SIZE;
-  const pageItems = items.slice(start, start + PAGE_SIZE);
-  return { page: safePage, totalPages, pageItems, setPage };
-}
-
-function Pagination({
-  page,
-  totalPages,
-  setPage,
-}: {
-  page: number;
-  totalPages: number;
-  setPage: (page: number) => void;
-}) {
-  if (totalPages <= 1) return null;
-  return (
-    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 dark:border-slate-700">
-      <span className="text-xs text-slate-500 dark:text-slate-400">
-        Página {page} de {totalPages}
-      </span>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          className="px-3 py-1 text-xs"
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-        >
-          Anterior
-        </Button>
-        <Button
-          variant="secondary"
-          className="px-3 py-1 text-xs"
-          disabled={page >= totalPages}
-          onClick={() => setPage(page + 1)}
-        >
-          Siguiente
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 export default function InventoryPage() {
   const { orgId } = useOrg();

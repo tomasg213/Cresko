@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { PhoneField } from "@/components/phone-field";
 import {
   Button,
@@ -36,6 +37,8 @@ export default function PartiesPage() {
     queryFn: () => api<Party[]>(`/v1/parties?kind=${kind}`, { orgId }),
     enabled: !!orgId,
   });
+
+  const pagination = usePagination(parties.data ?? []);
 
   async function handleDelete(party: Party) {
     if (
@@ -97,43 +100,46 @@ export default function PartiesPage() {
         ) : parties.data?.length === 0 ? (
           <EmptyState message="Sin registros." />
         ) : (
-          <Table headers={["Nombre", "Documento", "Teléfono", "Correo", ""]}>
-            {parties.data?.map((party) => (
-              <tr key={party.id}>
-                <td className="px-5 py-3 font-medium">{party.name}</td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {party.document_id
-                    ? formatDocument(party.document_type, party.document_id)
-                    : ""}
-                </td>
-                <td className="px-5 py-3">{party.phone}</td>
-                <td className="px-5 py-3">{party.email}</td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      className="px-2 py-1"
-                      onClick={() => {
-                        setEditing(party);
-                        setOpen(true);
-                      }}
-                      aria-label="Editar"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="px-2 py-1 text-red-600"
-                      onClick={() => handleDelete(party)}
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </Table>
+          <>
+            <Table headers={["Nombre", "Documento", "Teléfono", "Correo", ""]}>
+              {pagination.pageItems.map((party) => (
+                <tr key={party.id}>
+                  <td className="px-5 py-3 font-medium">{party.name}</td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {party.document_id
+                      ? formatDocument(party.document_type, party.document_id)
+                      : ""}
+                  </td>
+                  <td className="px-5 py-3">{party.phone}</td>
+                  <td className="px-5 py-3">{party.email}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1"
+                        onClick={() => {
+                          setEditing(party);
+                          setOpen(true);
+                        }}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="px-2 py-1 text-red-600"
+                        onClick={() => handleDelete(party)}
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...pagination} />
+          </>
         )}
       </Card>
 

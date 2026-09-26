@@ -16,6 +16,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useFeedback } from "@/components/feedback";
+import { Pagination, usePagination } from "@/components/pagination";
 import { useOrg } from "@/components/providers";
 import { api } from "@/lib/api";
 import type {
@@ -76,6 +77,7 @@ export default function FinancePage() {
 
   const receivables = tab === "ar" ? arReceivables : apReceivables;
   const groups = groupByParty(receivables.data ?? []);
+  const groupsPagination = usePagination(groups);
 
   return (
     <div className="space-y-4">
@@ -111,13 +113,16 @@ export default function FinancePage() {
       ) : groups.length === 0 ? (
         <EmptyState message="Sin saldos pendientes." />
       ) : (
-        groups.map((group) => (
-          <PartyCard
-            key={`${group.party_id}-${group.currency}`}
-            group={group}
-            tab={tab}
-          />
-        ))
+        <>
+          {groupsPagination.pageItems.map((group) => (
+            <PartyCard
+              key={`${group.party_id}-${group.currency}`}
+              group={group}
+              tab={tab}
+            />
+          ))}
+          <Pagination {...groupsPagination} />
+        </>
       )}
 
       <PaymentsList tab={tab} />
@@ -432,6 +437,9 @@ function PaymentsList({ tab }: { tab: "ar" | "ap" }) {
   });
 
   const payments = tab === "ar" ? arPayments : apPayments;
+  const pagination = usePagination<ArPayment | ApPayment>(
+    (payments.data ?? []) as ArPayment[] | ApPayment[],
+  );
 
   async function handleVoid(id: string) {
     if (
@@ -471,64 +479,67 @@ function PaymentsList({ tab }: { tab: "ar" | "ap" }) {
       ) : payments.data?.length === 0 ? (
         <EmptyState message="Sin pagos registrados." />
       ) : (
-        <Table
-          headers={[
-            "Factura",
-            "Contraparte",
-            "Monto",
-            "Moneda",
-            "Fecha",
-            "Estado",
-            "",
-          ]}
-        >
-          {payments.data?.map((payment) => {
-            const amount = Number(payment.amount);
-            const isAp = tab === "ap";
-            const shown = isAp ? -amount : amount;
-            return (
-              <tr key={payment.id}>
-                <td className="px-5 py-3 font-medium">
-                  {isAp
-                    ? (payment as ApPayment).invoice_number
-                    : (payment as ArPayment).invoice_number}
-                </td>
-                <td className="px-5 py-3">
-                  {isAp
-                    ? (payment as ApPayment).supplier_name
-                    : (payment as ArPayment).party_name}
-                </td>
-                <td className="px-5 py-3 font-semibold">
-                  {formatMoney(String(shown), payment.currency)}
-                </td>
-                <td className="px-5 py-3">{payment.currency}</td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {new Date(payment.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-5 py-3">
-                  {"status" in payment && payment.status === "void" ? (
-                    <span className="text-red-600">Anulado</span>
-                  ) : (
-                    <span className="text-green-600">Vigente</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  {!("status" in payment) || payment.status === "posted" ? (
-                    <div className="flex justify-end">
-                      <Button
-                        variant="danger"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => handleVoid(payment.id)}
-                      >
-                        Anular
-                      </Button>
-                    </div>
-                  ) : null}
-                </td>
-              </tr>
-            );
-          })}
-        </Table>
+        <>
+          <Table
+            headers={[
+              "Factura",
+              "Contraparte",
+              "Monto",
+              "Moneda",
+              "Fecha",
+              "Estado",
+              "",
+            ]}
+          >
+            {pagination.pageItems.map((payment) => {
+              const amount = Number(payment.amount);
+              const isAp = tab === "ap";
+              const shown = isAp ? -amount : amount;
+              return (
+                <tr key={payment.id}>
+                  <td className="px-5 py-3 font-medium">
+                    {isAp
+                      ? (payment as ApPayment).invoice_number
+                      : (payment as ArPayment).invoice_number}
+                  </td>
+                  <td className="px-5 py-3">
+                    {isAp
+                      ? (payment as ApPayment).supplier_name
+                      : (payment as ArPayment).party_name}
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {formatMoney(String(shown), payment.currency)}
+                  </td>
+                  <td className="px-5 py-3">{payment.currency}</td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {new Date(payment.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-5 py-3">
+                    {"status" in payment && payment.status === "void" ? (
+                      <span className="text-red-600">Anulado</span>
+                    ) : (
+                      <span className="text-green-600">Vigente</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    {!("status" in payment) || payment.status === "posted" ? (
+                      <div className="flex justify-end">
+                        <Button
+                          variant="danger"
+                          className="px-3 py-1 text-xs"
+                          onClick={() => handleVoid(payment.id)}
+                        >
+                          Anular
+                        </Button>
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </Table>
+          <Pagination {...pagination} />
+        </>
       )}
     </Card>
   );
