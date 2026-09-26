@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from .dependencies import get_current_membership, get_supabase_repository, require_permissions
 from .repositories import SupabaseRepository
@@ -13,6 +13,7 @@ from .schemas import (
     TransferIn,
     WarehouseCreateIn,
     WarehouseRef,
+    WarehouseUpdateIn,
 )
 
 router = APIRouter(prefix="/v1/inventory", tags=["inventory"])
@@ -95,6 +96,50 @@ async def create_warehouse(
         },
     )
     return WarehouseRef.model_validate(result)
+
+
+@router.patch("/warehouses/{warehouse_id}", response_model=WarehouseRef)
+async def update_warehouse(
+    warehouse_id: str,
+    payload: WarehouseUpdateIn,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.ORG_MANAGE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> WarehouseRef:
+    body = payload.model_dump(mode="json", exclude_none=True)
+    if not body:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    rows = await repository.patch_json(
+        "warehouses",
+        body,
+        {"id": f"eq.{warehouse_id}", "org_id": f"eq.{context.org_id}", "select": "id,name,code"},
+        prefer="return=representation",
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Warehouse not found")
+    return WarehouseRef.model_validate(rows[0])
+
+
+@router.delete("/warehouses/{warehouse_id}", status_code=204)
+async def delete_warehouse(
+    warehouse_id: str,
+    context: Annotated[
+        OrganizationContext,
+        Depends(require_permissions(Permission.ORG_MANAGE)),
+    ],
+    repository: Annotated[SupabaseRepository, Depends(get_supabase_repository)],
+) -> None:
+    # Soft-delete: se oculta de la app pero se conserva el histórico.
+    rows = await repository.patch_json(
+        "warehouses",
+        {"is_active": False},
+        {"id": f"eq.{warehouse_id}", "org_id": f"eq.{context.org_id}", "select": "id"},
+        prefer="return=representation",
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Warehouse not found")
 
 
 @router.post("/transfers", status_code=204)

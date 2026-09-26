@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, X } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import {
   Button,
@@ -27,20 +27,65 @@ import type {
 } from "@/lib/types";
 import { formatQty } from "@/lib/utils";
 
+const PAGE_SIZE = 12;
+
+function usePagination<T>(items: T[]) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const pageItems = items.slice(start, start + PAGE_SIZE);
+  return { page: safePage, totalPages, pageItems, setPage };
+}
+
+function Pagination({
+  page,
+  totalPages,
+  setPage,
+}: {
+  page: number;
+  totalPages: number;
+  setPage: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3 dark:border-slate-700">
+      <span className="text-xs text-slate-500 dark:text-slate-400">
+        Página {page} de {totalPages}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="secondary"
+          className="px-3 py-1 text-xs"
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+        >
+          Anterior
+        </Button>
+        <Button
+          variant="secondary"
+          className="px-3 py-1 text-xs"
+          disabled={page >= totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Siguiente
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   const { orgId } = useOrg();
 
-  const stock = useQuery({
-    queryKey: ["stock", orgId],
-    queryFn: () => api<StockLevel[]>(`/v1/inventory/stock`, { orgId }),
-    enabled: !!orgId,
-  });
   const movements = useQuery({
     queryKey: ["movements", orgId],
     queryFn: () =>
-      api<StockMovement[]>(`/v1/inventory/movements?limit=50`, { orgId }),
+      api<StockMovement[]>(`/v1/inventory/movements?limit=500`, { orgId }),
     enabled: !!orgId,
   });
+
+  const pagination = usePagination(movements.data ?? []);
 
   return (
     <div className="space-y-4">
@@ -50,7 +95,7 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <WarehousesCard />
-        <StockCard stock={stock} />
+        <StockCard />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -67,48 +112,51 @@ export default function InventoryPage() {
             message={movements.error.message}
             onRetry={() => movements.refetch()}
           />
-        ) : movements.data?.length === 0 ? (
+        ) : (movements.data ?? []).length === 0 ? (
           <EmptyState message="Sin movimientos registrados." />
         ) : (
-          <Table
-            headers={[
-              "Fecha",
-              "Producto",
-              "Almacén",
-              "Tipo",
-              "Cantidad",
-              "Saldo",
-              "Motivo",
-            ]}
-          >
-            {movements.data?.map((mov) => (
-              <tr key={mov.id}>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {new Date(mov.created_at).toLocaleString()}
-                </td>
-                <td className="px-5 py-3 font-medium">
-                  {mov.variant?.name ?? mov.variant_id}
-                </td>
-                <td className="px-5 py-3">{mov.warehouse?.name}</td>
-                <td className="px-5 py-3">
-                  <span
-                    className={
-                      Number(mov.qty) > 0 ? "text-green-600" : "text-red-600"
-                    }
-                  >
-                    {mov.movement_type}
-                  </span>
-                </td>
-                <td className="px-5 py-3 font-semibold">
-                  {formatQty(mov.qty)}
-                </td>
-                <td className="px-5 py-3">{formatQty(mov.balance_after)}</td>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                  {mov.reason}
-                </td>
-              </tr>
-            ))}
-          </Table>
+          <>
+            <Table
+              headers={[
+                "Fecha",
+                "Producto",
+                "Almacén",
+                "Tipo",
+                "Cantidad",
+                "Saldo",
+                "Motivo",
+              ]}
+            >
+              {pagination.pageItems.map((mov) => (
+                <tr key={mov.id}>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {new Date(mov.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-5 py-3 font-medium">
+                    {mov.variant?.name ?? mov.variant_id}
+                  </td>
+                  <td className="px-5 py-3">{mov.warehouse?.name}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={
+                        Number(mov.qty) > 0 ? "text-green-600" : "text-red-600"
+                      }
+                    >
+                      {mov.movement_type}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 font-semibold">
+                    {formatQty(mov.qty)}
+                  </td>
+                  <td className="px-5 py-3">{formatQty(mov.balance_after)}</td>
+                  <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                    {mov.reason}
+                  </td>
+                </tr>
+              ))}
+            </Table>
+            <Pagination {...pagination} />
+          </>
         )}
       </Card>
     </div>
@@ -118,8 +166,9 @@ export default function InventoryPage() {
 function WarehousesCard() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
-  const { notify } = useFeedback();
-  const [open, setOpen] = useState(false);
+  const { notify, confirm } = useFeedback();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<WarehouseRef | null>(null);
 
   const warehouses = useQuery({
     queryKey: ["warehouses", orgId],
@@ -127,12 +176,37 @@ function WarehousesCard() {
     enabled: !!orgId,
   });
 
+  const pagination = usePagination(warehouses.data ?? []);
+
+  async function handleDelete(warehouse: WarehouseRef) {
+    const ok = await confirm(
+      `¿Borrar el almacén "${warehouse.name}"? Se ocultará y no podrá usarse en POS ni traslados.`,
+    );
+    if (!ok) return;
+    try {
+      await api(`/v1/inventory/warehouses/${warehouse.id}`, {
+        method: "DELETE",
+        orgId,
+      });
+      notify("Almacén borrado.", "success");
+      queryClient.invalidateQueries({ queryKey: ["warehouses", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["stock", orgId] });
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : "No se pudo borrar el almacén",
+      );
+    }
+  }
+
   return (
     <Card>
       <CardHeader
         title="Almacenes"
         action={
-          <Button onClick={() => setOpen(true)} className="px-3 py-1.5 text-xs">
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="px-3 py-1.5 text-xs"
+          >
             <Plus className="h-3.5 w-3.5" />
             Nuevo almacén
           </Button>
@@ -145,35 +219,62 @@ function WarehousesCard() {
           message={warehouses.error.message}
           onRetry={() => warehouses.refetch()}
         />
-      ) : warehouses.data?.length === 0 ? (
+      ) : (warehouses.data ?? []).length === 0 ? (
         <EmptyState message="Sin almacenes. Crea el primero." />
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {warehouses.data?.map((wh) => (
-            <div
-              key={wh.id}
-              className="flex items-center justify-between px-5 py-3"
-            >
-              <div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {wh.name}
+        <>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {pagination.pageItems.map((wh) => (
+              <div
+                key={wh.id}
+                className="flex items-center justify-between px-5 py-3"
+              >
+                <div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {wh.name}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {wh.code}
+                  </div>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {wh.code}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditing(wh)}
+                    aria-label={`Editar ${wh.name}`}
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(wh)}
+                    aria-label={`Borrar ${wh.name}`}
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          <Pagination {...pagination} />
+        </>
       )}
-      {open && (
-        <CreateWarehouseModal
+      {(createOpen || editing) && (
+        <WarehouseModal
           orgId={orgId}
-          onClose={() => setOpen(false)}
-          onCreated={() => {
-            setOpen(false);
+          warehouse={editing}
+          onClose={() => {
+            setCreateOpen(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            setCreateOpen(false);
+            setEditing(null);
             queryClient.invalidateQueries({ queryKey: ["warehouses", orgId] });
-            notify("Almacén creado.", "success");
+            notify(
+              editing ? "Almacén actualizado." : "Almacén creado.",
+              "success",
+            );
           }}
           notify={notify}
         />
@@ -182,34 +283,44 @@ function WarehousesCard() {
   );
 }
 
-function CreateWarehouseModal({
+function WarehouseModal({
   orgId,
+  warehouse,
   onClose,
-  onCreated,
+  onSaved,
   notify,
 }: {
   orgId: string | null;
+  warehouse: WarehouseRef | null;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
   notify: (message: string, type?: "success" | "error") => void;
 }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [name, setName] = useState(warehouse?.name ?? "");
+  const [code, setCode] = useState(warehouse?.code ?? "");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     try {
-      await api("/v1/inventory/warehouses", {
-        method: "POST",
-        orgId,
-        body: { name, code },
-      });
-      onCreated();
+      if (warehouse) {
+        await api(`/v1/inventory/warehouses/${warehouse.id}`, {
+          method: "PATCH",
+          orgId,
+          body: { name, code },
+        });
+      } else {
+        await api("/v1/inventory/warehouses", {
+          method: "POST",
+          orgId,
+          body: { name, code },
+        });
+      }
+      onSaved();
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "No se pudo crear el almacén",
+        err instanceof Error ? err.message : "No se pudo guardar el almacén",
       );
       setLoading(false);
     }
@@ -220,7 +331,7 @@ function CreateWarehouseModal({
       <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-slate-800">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Nuevo almacén
+            {warehouse ? "Editar almacén" : "Nuevo almacén"}
           </h2>
           <button
             onClick={onClose}
@@ -259,7 +370,11 @@ function CreateWarehouseModal({
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creando..." : "Crear almacén"}
+              {loading
+                ? "Guardando..."
+                : warehouse
+                  ? "Guardar cambios"
+                  : "Crear almacén"}
             </Button>
           </div>
         </form>
@@ -268,28 +383,36 @@ function CreateWarehouseModal({
   );
 }
 
-function StockCard({
-  stock,
-}: {
-  stock: {
-    data?: StockLevel[];
-    isLoading: boolean;
-    isError: boolean;
-    error: Error | null;
-    refetch: () => void;
-  };
-}) {
+function StockCard() {
   const { orgId } = useOrg();
+  const [warehouseId, setWarehouseId] = useState("");
+  const [query, setQuery] = useState("");
+
+  const stock = useQuery({
+    queryKey: ["stock", orgId],
+    queryFn: () => api<StockLevel[]>(`/v1/inventory/stock`, { orgId }),
+    enabled: !!orgId,
+  });
   const warehouses = useQuery({
     queryKey: ["warehouses", orgId],
     queryFn: () => api<WarehouseRef[]>(`/v1/inventory/warehouses`, { orgId }),
     enabled: !!orgId,
   });
-  const [warehouseId, setWarehouseId] = useState("");
 
-  const rows = warehouseId
-    ? (stock.data ?? []).filter((row) => row.warehouse_id === warehouseId)
-    : (stock.data ?? []);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let rows = stock.data ?? [];
+    if (warehouseId) rows = rows.filter((r) => r.warehouse_id === warehouseId);
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        (r.variant?.name ?? "").toLowerCase().includes(q) ||
+        (r.variant?.sku ?? "").toLowerCase().includes(q) ||
+        (r.warehouse?.name ?? "").toLowerCase().includes(q),
+    );
+  }, [stock.data, warehouseId, query]);
+
+  const pagination = usePagination(filtered);
 
   return (
     <Card>
@@ -301,7 +424,7 @@ function StockCard({
             onChange={(event) => setWarehouseId(event.target.value)}
             className="w-44"
           >
-            <option value="">Todos</option>
+            <option value="">Todos los almacenes</option>
             {(warehouses.data ?? []).map((wh) => (
               <option key={wh.id} value={wh.id}>
                 {wh.name}
@@ -310,32 +433,45 @@ function StockCard({
           </Select>
         }
       />
+      <div className="px-5 py-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar artículo por nombre, SKU o almacén..."
+            className="pl-9"
+          />
+        </div>
+      </div>
       {stock.isLoading ? (
         <LoadingState />
       ) : stock.isError ? (
-        <ErrorState
-          message={stock.error?.message ?? "Error"}
-          onRetry={stock.refetch}
-        />
-      ) : rows.length === 0 ? (
+        <ErrorState message={stock.error.message} onRetry={stock.refetch} />
+      ) : filtered.length === 0 ? (
         <EmptyState message="Sin existencias registradas." />
       ) : (
-        <Table headers={["Producto", "SKU", "Almacén", "Cantidad"]}>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td className="px-5 py-3 font-medium">
-                {row.variant?.name ?? row.variant_id}
-              </td>
-              <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                {row.variant?.sku}
-              </td>
-              <td className="px-5 py-3">
-                {row.warehouse?.name ?? row.warehouse_id}
-              </td>
-              <td className="px-5 py-3 font-semibold">{formatQty(row.qty)}</td>
-            </tr>
-          ))}
-        </Table>
+        <>
+          <Table headers={["Producto", "SKU", "Almacén", "Cantidad"]}>
+            {pagination.pageItems.map((row) => (
+              <tr key={row.id}>
+                <td className="px-5 py-3 font-medium">
+                  {row.variant?.name ?? row.variant_id}
+                </td>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
+                  {row.variant?.sku}
+                </td>
+                <td className="px-5 py-3">
+                  {row.warehouse?.name ?? row.warehouse_id}
+                </td>
+                <td className="px-5 py-3 font-semibold">
+                  {formatQty(row.qty)}
+                </td>
+              </tr>
+            ))}
+          </Table>
+          <Pagination {...pagination} />
+        </>
       )}
     </Card>
   );
