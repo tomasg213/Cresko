@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -10,6 +10,7 @@ import {
   CardHeader,
   EmptyState,
   ErrorState,
+  Field,
   Input,
   LoadingState,
   Select,
@@ -53,6 +54,7 @@ export default function AdminPage() {
   const { notify } = useFeedback();
   const [section, setSection] = useState<Section>("customers");
   const [query, setQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const orgs = useQuery({
     queryKey: ["admin-orgs", orgId],
@@ -143,7 +145,20 @@ export default function AdminPage() {
       </div>
 
       <Card>
-        <CardHeader title={section === "demos" ? "Cuentas demo" : "Clientes"} />
+        <CardHeader
+          title={section === "demos" ? "Cuentas demo" : "Clientes"}
+          action={
+            section === "customers" ? (
+              <Button
+                onClick={() => setCreateOpen(true)}
+                className="px-3 py-1.5 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Crear cuenta
+              </Button>
+            ) : undefined
+          }
+        />
         <div className="px-5 py-4">
           <div className="relative mb-4 max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -198,6 +213,19 @@ export default function AdminPage() {
           )}
         </div>
       </Card>
+
+      {createOpen && (
+        <CreateAccountModal
+          orgId={orgId}
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["admin-orgs", orgId] });
+            notify("Cuenta creada.", "success");
+          }}
+          notify={notify}
+        />
+      )}
     </div>
   );
 }
@@ -371,5 +399,101 @@ function AdminRow({
         )}
       </td>
     </tr>
+  );
+}
+
+function CreateAccountModal({
+  orgId,
+  onClose,
+  onCreated,
+  notify,
+}: {
+  orgId: string | null;
+  onClose: () => void;
+  onCreated: () => void;
+  notify: (message: string, type?: "success" | "error") => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      await api("/v1/admin/orgs", {
+        method: "POST",
+        orgId,
+        body: { name, email, password },
+      });
+      onCreated();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "No se pudo crear la cuenta");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:py-8">
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl dark:bg-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Crear cuenta de cliente
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+          <Field label="Nombre del comercio">
+            <Input
+              required
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Mi Comercio"
+            />
+          </Field>
+          <Field label="Correo electrónico">
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="cliente@correo.com"
+            />
+          </Field>
+          <Field label="Contraseña">
+            <Input
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mínimo 8 caracteres"
+            />
+          </Field>
+          <div className="flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creando..." : "Crear cuenta"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

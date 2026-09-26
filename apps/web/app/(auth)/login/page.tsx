@@ -69,14 +69,12 @@ export default function LoginPage() {
             {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
-        <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 text-center text-sm">
-          ¿No tienes cuenta?{" "}
-          <a
-            href="/signup"
-            className="font-medium text-primary hover:underline"
-          >
-            Crear cuenta
-          </a>
+        <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+          ¿Necesitas una cuenta?{" "}
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            Contacta al administrador
+          </span>
+          .
         </div>
         <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-3 text-center text-sm">
           <a
